@@ -18,7 +18,7 @@ import {
   Wallet,
   Pencil,
 } from "lucide-react";
-import bgNoise from "@/assets/bg-noise.gif.asset.json";
+import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
 import {
   Dialog,
@@ -311,7 +311,7 @@ function Dashboard() {
       <div
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.18] mix-blend-overlay"
         style={{
-          backgroundImage: `url(${bgNoise.url})`,
+          backgroundImage: `url(${bgNoise})`,
           backgroundRepeat: "repeat",
           backgroundSize: "240px 240px",
         }}

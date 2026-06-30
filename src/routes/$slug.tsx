@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ListMusic, Zap, Plus, Star, Upload, Loader2 } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 import { Marquee } from "@/components/Marquee";
-import bgNoise from "@/assets/bg-noise.gif.asset.json";
+import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
 import { useAnimatedSwap } from "@/hooks/use-animated-swap";
 
@@ -359,7 +359,7 @@ function ViewerRoom() {
       <div
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.18] mix-blend-overlay"
         style={{
-          backgroundImage: `url(${bgNoise.url})`,
+          backgroundImage: `url(${bgNoise})`,
           backgroundRepeat: "repeat",
           backgroundSize: "240px 240px",
         }}

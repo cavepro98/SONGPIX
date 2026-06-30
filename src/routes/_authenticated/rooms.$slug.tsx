@@ -22,7 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import { MusicPlayer } from "@/components/MusicPlayer";
-import bgNoise from "@/assets/bg-noise.gif.asset.json";
+import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
 import { SourceBadge } from "@/components/SourceBadge";
 import { Marquee } from "@/components/Marquee";
@@ -425,7 +425,7 @@ function RoomPanel() {
       <div
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.18] mix-blend-overlay"
         style={{
-          backgroundImage: `url(${bgNoise.url})`,
+          backgroundImage: `url(${bgNoise})`,
           backgroundRepeat: "repeat",
           backgroundSize: "240px 240px",
         }}

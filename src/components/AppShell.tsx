@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ListMusic, LogOut, Home, Menu, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import bgNoise from "@/assets/bg-noise.gif.asset.json";
+import bgNoise from "@/assets/bg-noise.gif";
 
 type Room = { id: string; slug: string; name: string };
 
@@ -50,7 +50,7 @@ export function AppShell({
       <div
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.18] mix-blend-overlay"
         style={{
-          backgroundImage: `url(${bgNoise.url})`,
+          backgroundImage: `url(${bgNoise})`,
           backgroundRepeat: "repeat",
           backgroundSize: "240px 240px",
         }}

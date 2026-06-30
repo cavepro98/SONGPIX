@@ -21,7 +21,7 @@ import {
   Gamepad2,
 } from "lucide-react";
 import { isSupabaseClientConfigured, supabase } from "@/integrations/supabase/client";
-import bgNoise from "@/assets/bg-noise.gif.asset.json";
+import bgNoise from "@/assets/bg-noise.gif";
 
 type QueueTrack = { id: string; title: string; user: string; price: string; hot?: boolean };
 
@@ -121,7 +121,7 @@ function Landing() {
         <div
           className="pointer-events-none absolute inset-0 opacity-75 mix-blend-overlay"
           style={{
-            backgroundImage: `url(${bgNoise.url})`,
+            backgroundImage: `url(${bgNoise})`,
             backgroundRepeat: "repeat",
             backgroundSize: "240px 240px",
           }}
@@ -614,7 +614,7 @@ function Landing() {
         <div
           className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay"
           style={{
-            backgroundImage: `url(${bgNoise.url})`,
+            backgroundImage: `url(${bgNoise})`,
             backgroundRepeat: "repeat",
             backgroundSize: "240px 240px",
           }}
