@@ -57,7 +57,7 @@ export default defineConfig(({ command, mode }) => {
         },
         server: { entry: "server" },
       }),
-      command === "build" ? nitro({ preset: "cloudflare-module" }) : null,
+      command === "build" ? nitro({ preset: "vercel" }) : null,
       react(),
     ],
   };
