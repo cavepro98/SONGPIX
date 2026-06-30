@@ -22,9 +22,22 @@ export type CreatePixResult = {
 };
 
 function getToken(): string {
-  const t = process.env.MP_ACCESS_TOKEN;
+  const t = process.env.MP_ACCESS_TOKEN?.trim();
   if (!t) throw new Error("Mercado Pago não configurado");
-  return t;
+
+  const looksLikeAccessToken =
+    t.startsWith("APP_USR-") ||
+    t.startsWith("TEST-") ||
+    t.startsWith("APP-") ||
+    t.startsWith("Bearer ");
+
+  if (!looksLikeAccessToken || t.startsWith("Client_")) {
+    throw new Error(
+      "MP_ACCESS_TOKEN inválido. Use o Access Token real do Mercado Pago, não Client Secret.",
+    );
+  }
+
+  return t.startsWith("Bearer ") ? t.slice("Bearer ".length).trim() : t;
 }
 
 export async function mpCreatePixPayment(input: CreatePixInput): Promise<CreatePixResult> {
