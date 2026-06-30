@@ -431,23 +431,23 @@ function RoomPanel() {
         }}
       />
       <header className="relative z-10 border-b-2 border-border bg-surface-2/70 backdrop-blur-[1px]">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-6 py-4">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Link
             to="/dashboard"
-            className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-neon"
+            className="inline-flex items-center gap-2 self-start font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-neon"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Voltar
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-stretch justify-start gap-2 sm:w-auto sm:justify-end">
             <button
               onClick={copyLink}
-              className="inline-flex items-center gap-1.5 border border-border bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+              className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 border border-border bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon sm:min-h-0 sm:flex-none sm:justify-start sm:py-1.5"
             >
               <Copy className="h-3 w-3" /> Copiar link
             </button>
             <button
               onClick={() => setOverlayOpen(true)}
-              className="inline-flex items-center gap-1.5 border border-border bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+              className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 border border-border bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon sm:min-h-0 sm:flex-none sm:justify-start sm:py-1.5"
             >
               <Monitor className="h-3 w-3" /> Overlay OBS/TikTok
             </button>
@@ -467,7 +467,7 @@ function RoomPanel() {
                 if (error) return toast.error(error.message);
                 toast.success("Sala reiniciada — ganhos preservados");
               }}
-              className="inline-flex items-center gap-1.5 border border-border bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-destructive hover:text-destructive"
+              className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 border border-border bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-destructive hover:text-destructive sm:min-h-0 sm:flex-none sm:justify-start sm:py-1.5"
             >
               <Trash2 className="h-3 w-3" /> Reiniciar sala
             </button>
@@ -475,7 +475,7 @@ function RoomPanel() {
               href={`/${slug}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 border border-border bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+              className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 border border-border bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon sm:min-h-0 sm:flex-none sm:justify-start sm:py-1.5"
             >
               <ExternalLink className="h-3 w-3" /> Abrir sala
             </a>
