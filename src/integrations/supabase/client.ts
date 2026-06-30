@@ -29,12 +29,32 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-function createSupabaseClient() {
+function getServerEnv(name: "SUPABASE_URL" | "SUPABASE_PUBLISHABLE_KEY") {
+  return typeof process !== "undefined" ? process.env[name] : undefined;
+}
+
+function getSupabaseClientConfig() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const SUPABASE_URL =
+    import.meta.env.VITE_SUPABASE_URL ||
+    import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+    getServerEnv("SUPABASE_URL");
   const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    getServerEnv("SUPABASE_PUBLISHABLE_KEY");
+
+  return { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY };
+}
+
+export function isSupabaseClientConfigured() {
+  const { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } = getSupabaseClientConfig();
+  return Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+}
+
+function createSupabaseClient() {
+  const { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } = getSupabaseClientConfig();
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [

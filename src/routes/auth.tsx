@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseClientConfigured, supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ListMusic } from "lucide-react";
 
@@ -28,6 +28,7 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [appConfig, setAppConfig] = useState<PublicAppConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
+  const supabaseConfigured = isSupabaseClientConfigured();
 
   useEffect(() => {
     let mounted = true;
@@ -48,6 +49,8 @@ function AuthPage() {
       setAppConfig(config);
       setConfigLoading(false);
 
+      if (!supabaseConfigured) return;
+
       const { data } = await supabase.auth.getSession();
       if (!data.session?.user || !mounted) return;
       const { data: role } = await supabase
@@ -64,12 +67,16 @@ function AuthPage() {
     return () => {
       mounted = false;
     };
-  }, [navigate]);
+  }, [navigate, supabaseConfigured]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
+      if (!supabaseConfigured) {
+        throw new Error("Supabase não está configurado no ambiente de produção.");
+      }
+
       if (mode === "signup") {
         if (appConfig?.maintenanceMode)
           throw new Error("A plataforma está em manutenção no momento.");
@@ -142,6 +149,13 @@ function AuthPage() {
             </div>
           )}
 
+          {!supabaseConfigured && (
+            <div className="mt-6 rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              Supabase não está configurado neste deploy. Cadastre as variáveis públicas e de
+              servidor na Vercel.
+            </div>
+          )}
+
           {!configLoading && mode === "signup" && appConfig && !appConfig.allowSignups && (
             <div className="mt-6 rounded-md border border-border bg-surface-2 px-4 py-3 text-sm text-muted-foreground">
               Novos cadastros estão desativados no momento.
@@ -188,6 +202,7 @@ function AuthPage() {
               disabled={
                 loading ||
                 configLoading ||
+                !supabaseConfigured ||
                 !!appConfig?.maintenanceMode ||
                 (mode === "signup" && !!appConfig && !appConfig.allowSignups)
               }

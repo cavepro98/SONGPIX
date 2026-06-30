@@ -7,7 +7,10 @@ import { defineConfig, loadEnv } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig(({ command, mode }) => {
-  const loadedEnv = loadEnv(mode, process.cwd(), "VITE_");
+  const loadedEnv = {
+    ...loadEnv(mode, process.cwd(), "VITE_"),
+    ...loadEnv(mode, process.cwd(), "NEXT_PUBLIC_"),
+  };
   const envDefine = Object.fromEntries(
     Object.entries(loadedEnv).map(([key, value]) => [
       `import.meta.env.${key}`,
@@ -17,6 +20,7 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     define: envDefine,
+    envPrefix: ["VITE_", "NEXT_PUBLIC_"],
     server: {
       host: "::",
       port: 8080,

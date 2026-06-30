@@ -20,7 +20,7 @@ import {
   Tv,
   Gamepad2,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseClientConfigured, supabase } from "@/integrations/supabase/client";
 import bgNoise from "@/assets/bg-noise.gif.asset.json";
 
 type QueueTrack = { id: string; title: string; user: string; price: string; hot?: boolean };
@@ -56,6 +56,8 @@ export const Route = createFileRoute("/")({
 function Landing() {
   const navigate = useNavigate();
   useEffect(() => {
+    if (!isSupabaseClientConfigured()) return;
+
     let cancelled = false;
     supabase.auth.getUser().then(({ data }) => {
       if (!cancelled && data.user) {
