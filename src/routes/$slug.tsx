@@ -446,7 +446,7 @@ function ViewerRoom() {
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.18] mix-blend-overlay"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.35] mix-blend-overlay"
         style={{
           backgroundImage: `url(${bgNoise})`,
           backgroundRepeat: "repeat",
