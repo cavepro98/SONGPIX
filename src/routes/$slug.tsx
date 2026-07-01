@@ -554,7 +554,7 @@ function ViewerRoom() {
                     </p>
                     {highestPaidCents > 0 && (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Se quiser disputar o primeiro lugar, envie um valor acima do maior fura fila
+                        Se quiser aumentar sua prioridade, envie um valor acima do maior fura fila
                         atual ({formatCents(highestPaidCents)}). Isso é opcional.
                       </p>
                     )}
@@ -982,9 +982,9 @@ function ViewerRoom() {
                             </span>
                             {highestPaidCents > 0 && (
                               <p className="basis-full text-[11px] leading-relaxed text-muted-foreground">
-                                Dica: para ficar em primeiro, pague acima do maior fura fila atual (
-                                {formatCents(highestPaidCents)}). Não é obrigatório; qualquer valor
-                                dentro do limite já apoia e melhora sua posição.
+                                Dica: para aumentar sua prioridade, pague acima do maior fura fila
+                                atual ({formatCents(highestPaidCents)}). Não é obrigatório;
+                                qualquer valor dentro do limite já apoia e melhora sua posição.
                               </p>
                             )}
                           </div>

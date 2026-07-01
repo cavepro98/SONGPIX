@@ -410,7 +410,7 @@ function Landing() {
               {
                 icon: DollarSign,
                 t: "Preço sob seu controle",
-                d: "Você define o valor mínimo pro fura fila. O viewer pode pagar acima disso pra garantir o topo da fila. Você escolhe, o público decide.",
+                d: "Você define o valor mínimo pro fura fila. O viewer pode pagar acima disso para ganhar prioridade na fila. Você escolhe, o público decide.",
               },
               {
                 icon: Zap,
