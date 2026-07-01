@@ -883,26 +883,25 @@ function ViewerRoom() {
                     {topQueuedItems.map((item, idx) => (
                       <div
                         key={item.id}
-                        className="border border-neon/40 bg-neon/[0.06] animate-[soft-in_0.9s_cubic-bezier(0.22,1,0.36,1)_both]"
+                        className="relative border border-border bg-black/40 animate-[soft-in_0.9s_cubic-bezier(0.22,1,0.36,1)_both]"
                         style={{ animationDelay: `${idx * 90}ms` }}
                       >
+                        <div className="absolute left-0 top-0 inline-flex items-center gap-1 bg-background px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
+                          <Star className="h-2.5 w-2.5 fill-current" /> Top da Sala
+                        </div>
                         <div className="flex items-center gap-3 p-3 sm:gap-5 sm:p-6">
-                          <Star className="hidden h-6 w-6 shrink-0 fill-neon text-neon sm:block" />
                           {item.thumbnail_url ? (
                             <img
                               src={item.thumbnail_url}
                               alt=""
-                              className="h-14 w-14 shrink-0 border border-neon/40 object-cover sm:h-20 sm:w-20"
+                              className="h-14 w-14 shrink-0 border border-border object-cover sm:h-20 sm:w-20"
                             />
                           ) : (
-                            <div className="grid h-14 w-14 shrink-0 place-items-center border border-neon/40 bg-surface-2 sm:h-20 sm:w-20">
-                              <ListMusic className="h-5 w-5 text-neon/60 sm:h-6 sm:w-6" />
+                            <div className="grid h-14 w-14 shrink-0 place-items-center border border-border bg-surface-2 sm:h-20 sm:w-20">
+                              <ListMusic className="h-5 w-5 text-muted-foreground/60 sm:h-6 sm:w-6" />
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <span className="inline-flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
-                              <Star className="h-2.5 w-2.5 fill-current sm:hidden" /> Top #{idx + 1}
-                            </span>
                             <Marquee className="text-sm font-bold sm:text-lg">{item.title}</Marquee>
                             {item.artist && (
                               <p className="truncate text-xs text-muted-foreground sm:text-sm">
