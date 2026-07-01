@@ -442,6 +442,12 @@ function ViewerRoom() {
   );
   const topQueuedItems = queuedItems.filter((i) => i.is_top);
   const queue = queuedItems.filter((i) => !i.is_top);
+  const highestPaidCents = Math.max(
+    0,
+    ...items
+      .filter((i) => i.status === "queued" || i.status === "playing")
+      .map((i) => i.paid_amount_cents || 0),
+  );
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -524,6 +530,12 @@ function ViewerRoom() {
                       O pedido abre um PIX de {formatCents(room.min_boost_cents)} e a música entra
                       automaticamente após a confirmação.
                     </p>
+                    {highestPaidCents > 0 && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Dica: se quiser ficar em primeiro, o valor precisa ser maior que o maior
+                        fura fila atual ({formatCents(highestPaidCents)}). Isso não é obrigatório.
+                      </p>
+                    )}
                   </div>
                 )}
                 {room.allow_upload && !room.require_payment && (
@@ -938,6 +950,13 @@ function ViewerRoom() {
                                 ? ` – ${formatCents(room.max_boost_cents)}`
                                 : ""}
                             </span>
+                            {highestPaidCents > 0 && (
+                              <p className="basis-full text-[11px] leading-relaxed text-muted-foreground">
+                                Dica: para ficar em primeiro, pague acima do maior fura fila atual (
+                                {formatCents(highestPaidCents)}). Não é obrigatório; qualquer valor
+                                dentro do limite já apoia e melhora sua posição.
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
