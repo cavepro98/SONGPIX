@@ -195,6 +195,7 @@ function Overlay() {
   }, [room]);
 
   const widgetsKey = useMemo(() => ALL_WIDGETS.filter((w) => widgets.has(w)), [widgets]);
+  const onlyAlert = widgetsKey.length === 1 && widgetsKey[0] === "alert";
   const refWidth =
     widgetsKey.length === 1
       ? ({
@@ -218,7 +219,7 @@ function Overlay() {
           "request-qr": 300,
           supporter: 360,
           boosts: 480,
-          alert: 220,
+          alert: 160,
         } as const)[
           widgetsKey[0]!
         ]
@@ -387,7 +388,7 @@ function Overlay() {
         }}
       >
         <div
-          className="grid gap-3 overflow-hidden p-2"
+          className={`grid gap-3 ${onlyAlert ? "overflow-visible p-0" : "overflow-hidden p-2"}`}
           style={{ width: refWidth, height: refHeight }}
         >
           {show("now") && (
@@ -657,18 +658,10 @@ function Overlay() {
             </WidgetCard>
           )}
 
-          {show("alert") && (
-            <WidgetCard label="Alerta de apoio" icon={<Zap className="h-3 w-3" />}>
-              {displayedAlert ? (
-                <div className="relative min-h-[136px]">
-                  <SupporterAlertCard alert={displayedAlert} leaving={alertLeaving} />
-                </div>
-              ) : (
-                <div className="grid min-h-[136px] place-items-center">
-                  <EmptyLine text="Aguardando apoio..." />
-                </div>
-              )}
-            </WidgetCard>
+          {show("alert") && displayedAlert && (
+            <div className="relative min-h-[136px] overflow-visible">
+              <SupporterAlertCard alert={displayedAlert} leaving={alertLeaving} />
+            </div>
           )}
         </div>
       </div>
