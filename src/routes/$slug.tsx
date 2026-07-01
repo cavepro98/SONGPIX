@@ -542,12 +542,11 @@ function ViewerRoom() {
                 {room.require_payment && (
                   <div className="mb-3 border border-neon/40 bg-neon/[0.08] p-3">
                     <div className="font-display text-xs font-bold uppercase tracking-widest text-neon">
-                      Apenas músicas pagas entram nesta sala
+                      Donate da live
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Para enviar sua música, confirme um PIX a partir de{" "}
-                      {formatCents(room.min_boost_cents)}. Depois da confirmação, ela entra na fila
-                      automaticamente.
+                      Envie um apoio via PIX a partir de {formatCents(room.min_boost_cents)} e
+                      peça sua música. Assim que confirmar, ela entra automaticamente na fila.
                     </p>
                     {highestPaidCents > 0 && (
                       <p className="mt-2 text-xs text-muted-foreground">
