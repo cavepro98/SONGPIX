@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Wallet, Send, X, Banknote, KeyRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 import {
   getMyEarnings,
@@ -55,6 +56,7 @@ function WithdrawalsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof getMyEarnings>> | null>(null);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  useBodyScrollLock(open);
 
   // form
   const [amount, setAmount] = useState("");
@@ -296,7 +298,7 @@ function WithdrawalsPage() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
           <form
             onSubmit={handleSubmit}
-            className="w-full max-w-lg rounded-xl border border-border bg-surface p-6"
+            className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-6"
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-lg font-bold">Solicitar saque</h3>

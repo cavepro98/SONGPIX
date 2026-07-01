@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Copy, Check, Loader2, QrCode } from "lucide-react";
 import { toast } from "sonner";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 type CreateResp = {
   paymentId: string;
@@ -30,6 +31,7 @@ function fmtCents(c: number) {
 export default function PixCheckoutModal(props: Props) {
   const { open, onClose, roomSlug, amountCents, payerName, existingItemId, song, onApproved } =
     props;
+  useBodyScrollLock(open);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<CreateResp | null>(null);
   const [email, setEmail] = useState("");
@@ -138,7 +140,7 @@ export default function PixCheckoutModal(props: Props) {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-6">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <QrCode className="h-5 w-5 text-neon" />

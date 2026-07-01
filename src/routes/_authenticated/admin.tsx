@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import {
   ArrowLeft,
   ShieldAlert,
@@ -183,6 +184,7 @@ function AdminPage() {
   const [settings, setSettings] = useState<any>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  useBodyScrollLock(!!editingUser);
 
   const fetchUsers = useServerFn(listAdminUsers);
   const saveUser = useServerFn(updateAdminUser);
@@ -1164,7 +1166,7 @@ function AdminPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-xl border border-border bg-surface p-6"
+            className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-6"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-display text-lg font-bold">Editar usuário</h2>

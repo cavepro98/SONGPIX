@@ -28,6 +28,7 @@ import { useCoverUrl } from "@/lib/use-cover-url";
 import { SourceBadge } from "@/components/SourceBadge";
 import { Marquee } from "@/components/Marquee";
 import { useAnimatedSwap } from "@/hooks/use-animated-swap";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { dispatchOverlayAlertTest } from "@/lib/overlay-alert-test";
 import { triggerOverlayAlertTest } from "@/lib/overlay-alert.functions";
 import { listRoomPayments } from "@/lib/payments.functions";
@@ -1247,6 +1248,7 @@ function OverlayBuilder({
   onClose: () => void;
 }) {
   const sendOverlayAlertTest = useServerFn(triggerOverlayAlertTest);
+  useBodyScrollLock();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const [transparent, setTransparent] = useState(true);
 
@@ -1280,7 +1282,7 @@ function OverlayBuilder({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl border border-border bg-background p-6 shadow-2xl"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain border border-border bg-background p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
