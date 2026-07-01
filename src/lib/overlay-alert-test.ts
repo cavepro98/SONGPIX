@@ -48,3 +48,16 @@ export function dispatchOverlayAlertTest(message: OverlayAlertTestMessage) {
 
   return delivered;
 }
+
+export function parseOverlayAlertTestMessage(raw: string | null): OverlayAlertTestMessage | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as OverlayAlertTestMessage;
+    if (parsed?.type !== "overlay-alert-test" || !parsed.slug || !parsed.ts || !parsed.alert) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}

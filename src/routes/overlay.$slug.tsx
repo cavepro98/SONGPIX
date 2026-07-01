@@ -9,6 +9,7 @@ import { useAnimatedSwap } from "@/hooks/use-animated-swap";
 import {
   OVERLAY_ALERT_TEST_CHANNEL,
   OVERLAY_ALERT_TEST_STORAGE_KEY,
+  parseOverlayAlertTestMessage,
   type OverlayAlertTestMessage,
 } from "@/lib/overlay-alert-test";
 
@@ -212,8 +213,8 @@ function Overlay() {
       ? ({
           now: 200,
           music: 720,
-          request: 180,
-          "request-qr": 220,
+          request: 200,
+          "request-qr": 280,
           supporter: 360,
           boosts: 480,
           alert: 220,
@@ -242,6 +243,7 @@ function Overlay() {
   const [activeAlert, setActiveAlert] = useState<AlertPayload | null>(null);
   const seenPaidRef = useRef<Map<string, number>>(new Map());
   const initializedRef = useRef(false);
+  const lastOverlayTestTsRef = useRef(0);
   const showAlert = widgets.has("alert");
   const { displayed: displayedAlert, isLeaving: alertLeaving } = useAnimatedSwap(
     activeAlert,
@@ -251,8 +253,11 @@ function Overlay() {
   useEffect(() => {
     if (!showAlert || typeof window === "undefined") return;
 
-    function enqueueTestAlert(message: OverlayAlertTestMessage) {
+    function enqueueTestAlert(message: OverlayAlertTestMessage | null) {
+      if (!message) return;
       if (message.type !== "overlay-alert-test" || message.slug !== slug) return;
+      if (message.ts <= lastOverlayTestTsRef.current) return;
+      lastOverlayTestTsRef.current = message.ts;
       setAlertQueue((q) => [...q, message.alert]);
     }
 
@@ -266,15 +271,18 @@ function Overlay() {
 
     const onStorage = (event: StorageEvent) => {
       if (event.key !== OVERLAY_ALERT_TEST_STORAGE_KEY || !event.newValue) return;
-      try {
-        enqueueTestAlert(JSON.parse(event.newValue) as OverlayAlertTestMessage);
-      } catch {
-        // ignore malformed storage events
-      }
+      enqueueTestAlert(parseOverlayAlertTestMessage(event.newValue));
     };
+
+    const poll = window.setInterval(() => {
+      enqueueTestAlert(
+        parseOverlayAlertTestMessage(window.localStorage.getItem(OVERLAY_ALERT_TEST_STORAGE_KEY)),
+      );
+    }, 1200);
 
     window.addEventListener("storage", onStorage);
     return () => {
+      window.clearInterval(poll);
       window.removeEventListener("storage", onStorage);
       channel?.close();
     };
@@ -534,7 +542,7 @@ function Overlay() {
 
           {show("request") && (
             <WidgetCard label="Peça sua música grátis" icon={<Zap className="h-3 w-3" />}>
-              <div className="relative overflow-hidden border border-neon/30 bg-neon/[0.06] p-4">
+              <div className="relative overflow-hidden border border-neon/30 bg-neon/[0.06] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
                 <div className="absolute right-0 top-0 border-l border-b border-neon/30 bg-neon px-2 py-1 font-display text-[9px] font-black uppercase tracking-[0.2em] text-neon-foreground">
                   ao vivo
                 </div>
@@ -548,7 +556,7 @@ function Overlay() {
                   <div className="mt-3 truncate font-display text-lg font-bold uppercase text-neon">
                     {room.slug}
                   </div>
-                  <div className="mt-1 truncate font-mono text-[11px] text-neon">
+                  <div className="mt-1 truncate border-t border-border/70 pt-2 font-mono text-[11px] text-neon">
                     {publicUrlLabel}
                   </div>
                 </div>
@@ -558,22 +566,25 @@ function Overlay() {
 
           {show("request-qr") && (
             <WidgetCard label="Peça sua música grátis + QR" icon={<Zap className="h-3 w-3" />}>
-              <div className="flex items-center gap-3 border border-neon/30 bg-neon/[0.06] p-3">
-                <div className="bg-white p-2">
-                  <QRCodeSVG value={publicUrl} size={78} level="M" />
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border border-neon/30 bg-neon/[0.06] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                <div className="shrink-0 bg-white p-2.5">
+                  <QRCodeSVG value={publicUrl} size={96} level="M" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-display text-lg font-black italic uppercase leading-none tracking-tight text-foreground">
+                  <div className="font-display text-xl font-black italic uppercase leading-none tracking-tight text-foreground">
                     Peça sua música grátis
                   </div>
                   <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
                     escaneie ou digite
                   </div>
-                  <div className="mt-2 truncate font-display text-base font-bold uppercase text-neon">
+                  <div className="mt-3 truncate font-display text-lg font-bold uppercase text-neon">
                     {room.slug}
                   </div>
-                  <div className="mt-1 truncate font-mono text-[11px] text-neon">
-                    {publicUrlLabel}
+                  <div className="mt-2 border-t border-border/70 pt-2">
+                    <div className="truncate font-mono text-[11px] text-neon">{publicUrlLabel}</div>
+                  </div>
+                  <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                    celular na camera e entra direto
                   </div>
                 </div>
               </div>
