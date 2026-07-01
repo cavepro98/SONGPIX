@@ -196,6 +196,7 @@ function RoomPanel() {
         .select("id, slug, name, description, cover_url, is_open, min_boost_cents")
         .eq("slug", slug)
         .eq("owner_id", uid)
+        .is("archived_at", null)
         .maybeSingle();
       if (!mounted) return;
       if (error || !r) {

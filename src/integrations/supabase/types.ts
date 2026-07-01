@@ -14,21 +14,21 @@ export type Database = {
           id: string;
           kind: string;
           payload: Json;
-          room_id: string;
+          room_id: string | null;
         };
         Insert: {
           created_at?: string;
           id?: string;
           kind: string;
           payload: Json;
-          room_id: string;
+          room_id?: string | null;
         };
         Update: {
           created_at?: string;
           id?: string;
           kind?: string;
           payload?: Json;
-          room_id?: string;
+          room_id?: string | null;
         };
         Relationships: [
           {
@@ -265,6 +265,7 @@ export type Database = {
           cover_url: string | null;
           created_at: string;
           description: string | null;
+          archived_at: string | null;
           id: string;
           is_open: boolean;
           max_boost_cents: number;
@@ -286,6 +287,7 @@ export type Database = {
           cover_url?: string | null;
           created_at?: string;
           description?: string | null;
+          archived_at?: string | null;
           id?: string;
           is_open?: boolean;
           max_boost_cents?: number;
@@ -307,6 +309,7 @@ export type Database = {
           cover_url?: string | null;
           created_at?: string;
           description?: string | null;
+          archived_at?: string | null;
           id?: string;
           is_open?: boolean;
           max_boost_cents?: number;

@@ -123,6 +123,7 @@ function Overlay() {
         .from("rooms")
         .select("id, slug, name, description, cover_url, min_boost_cents")
         .eq("slug", slug)
+        .is("archived_at", null)
         .maybeSingle();
       if (!mounted || !r) {
         setRoom(null);

@@ -149,6 +149,7 @@ function ViewerRoom() {
             "id, slug, name, description, cover_url, is_open, min_boost_cents, max_boost_cents, allow_upload, require_payment",
           )
           .eq("slug", slug)
+          .is("archived_at", null)
           .maybeSingle(),
         fetch("/api/public/app-config")
           .then((r) => (r.ok ? r.json() : null))

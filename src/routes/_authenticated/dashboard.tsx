@@ -127,6 +127,7 @@ function Dashboard() {
           "id, slug, name, is_open, created_at, cover_url, total_net_cents, total_gross_cents",
         )
         .eq("owner_id", uid)
+        .is("archived_at", null)
         .order("created_at", { ascending: false }),
       fetchEarnings().catch((err) => {
         toast.error(err instanceof Error ? err.message : "Erro ao carregar saldo");
@@ -369,12 +370,15 @@ function Dashboard() {
     if (!deleteId) return;
     const id = deleteId;
     setDeleteId(null);
-    const { error } = await supabase.from("rooms").delete().eq("id", id);
+    const { error } = await supabase
+      .from("rooms")
+      .update({ archived_at: new Date().toISOString(), is_open: false })
+      .eq("id", id);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Sala removida");
+    toast.success("Sala arquivada");
     setRooms((prev) => prev.filter((r) => r.id !== id));
   }
 
@@ -1030,7 +1034,8 @@ function Dashboard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover playlist?</AlertDialogTitle>
             <AlertDialogDescription>
-              Essa ação não pode ser desfeita. Todas as músicas da fila também serão apagadas.
+              A sala sairá do painel e do link público, mas vendas e histórico financeiro serão
+              preservados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1039,7 +1044,7 @@ function Dashboard() {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Remover
+              Arquivar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

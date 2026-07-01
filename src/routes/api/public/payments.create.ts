@@ -67,6 +67,7 @@ export const Route = createFileRoute("/api/public/payments/create")({
               "id, owner_id, name, is_open, min_boost_cents, max_boost_cents, allow_youtube, allow_spotify, allow_soundcloud",
             )
             .eq("slug", body.roomSlug)
+            .is("archived_at", null)
             .maybeSingle();
           if (roomErr) throw new Error(roomErr.message);
           if (!room) return json(request, { error: "Sala não encontrada" }, 404);

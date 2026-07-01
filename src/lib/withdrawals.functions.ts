@@ -53,21 +53,23 @@ async function computeUserBalance(supabaseAdmin: any, userId: string) {
   const commission = Number(settings?.commission_rate ?? 0.1);
   const minWithdrawalCents = Number(settings?.min_withdrawal_cents ?? 500);
 
-  // Totals are maintained transactionally by confirm_payment on the rooms table.
-  const { data: rooms } = await supabaseAdmin
-    .from("rooms")
-    .select("total_gross_cents, total_net_cents, total_commission_cents")
-    .eq("owner_id", userId);
-  const grossCents = (rooms ?? []).reduce(
-    (s: number, r: any) => s + Number(r.total_gross_cents || 0),
+  // Financial truth comes from approved payments, not from rooms.
+  // Rooms can be archived/hidden without losing transaction history.
+  const { data: payments } = await supabaseAdmin
+    .from("payments")
+    .select("amount_cents, net_cents, commission_cents")
+    .eq("owner_id", userId)
+    .eq("status", "approved");
+  const grossCents = (payments ?? []).reduce(
+    (s: number, p: any) => s + Number(p.amount_cents || 0),
     0,
   );
-  const netCents = (rooms ?? []).reduce(
-    (s: number, r: any) => s + Number(r.total_net_cents || 0),
+  const netCents = (payments ?? []).reduce(
+    (s: number, p: any) => s + Number(p.net_cents || 0),
     0,
   );
-  const commissionCents = (rooms ?? []).reduce(
-    (s: number, r: any) => s + Number(r.total_commission_cents || 0),
+  const commissionCents = (payments ?? []).reduce(
+    (s: number, p: any) => s + Number(p.commission_cents || 0),
     0,
   );
 

@@ -156,6 +156,7 @@ export const submitTrack = createServerFn({ method: "POST" })
         "id, is_open, allow_youtube, allow_spotify, allow_soundcloud, max_duration_sec, require_payment",
       )
       .eq("slug", data.roomSlug)
+      .is("archived_at", null)
       .maybeSingle();
     if (roomErr) throw new Error(roomErr.message);
     if (!room) throw new Error("Sala não encontrada");
@@ -219,6 +220,7 @@ export const submitUploadedTrack = createServerFn({ method: "POST" })
       .from("rooms")
       .select("id, is_open, allow_upload, require_payment")
       .eq("slug", data.roomSlug)
+      .is("archived_at", null)
       .maybeSingle();
     if (roomErr) throw new Error(roomErr.message);
     if (!room) throw new Error("Sala não encontrada");

@@ -307,7 +307,11 @@ function AdminPage() {
 
   async function loadAll() {
     const [r, q] = await Promise.all([
-      supabase.from("rooms").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("rooms")
+        .select("*")
+        .is("archived_at", null)
+        .order("created_at", { ascending: false }),
       supabase.from("queue_items").select("*").order("created_at", { ascending: false }).limit(500),
     ]);
     if (r.error) toast.error(r.error.message);
@@ -395,10 +399,18 @@ function AdminPage() {
   }
 
   async function deleteRoom(room: Room) {
-    if (!confirm(`Excluir a sala "${room.name}"? Isso remove a fila também.`)) return;
-    const { error } = await supabase.from("rooms").delete().eq("id", room.id);
+    if (
+      !confirm(
+        `Arquivar a sala "${room.name}"? Ela sairá do app, mas vendas e estatísticas financeiras serão preservadas.`,
+      )
+    )
+      return;
+    const { error } = await supabase
+      .from("rooms")
+      .update({ archived_at: new Date().toISOString(), is_open: false })
+      .eq("id", room.id);
     if (error) return toast.error(error.message);
-    toast.success("Sala excluída");
+    toast.success("Sala arquivada");
     loadAll();
   }
 

@@ -15,6 +15,7 @@ export const triggerOverlayAlertTest = createServerFn({ method: "POST" })
       .from("rooms")
       .select("id, slug, name, owner_id")
       .eq("slug", data.roomSlug)
+      .is("archived_at", null)
       .maybeSingle();
 
     if (roomError) throw new Error(roomError.message);

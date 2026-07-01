@@ -28,6 +28,7 @@ export function AppShell({
         .from("rooms")
         .select("id, slug, name")
         .eq("owner_id", uid)
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
       setRooms(data ?? []);
     })();
