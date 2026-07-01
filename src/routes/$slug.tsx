@@ -918,7 +918,7 @@ function ViewerRoom() {
                             </span>
                             <input
                               type="number"
-                              step="0.50"
+                              step="0.01"
                               min={room.min_boost_cents / 100}
                               max={room.max_boost_cents ? room.max_boost_cents / 100 : undefined}
                               value={boostAmount}

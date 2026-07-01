@@ -891,7 +891,7 @@ function Dashboard() {
                     type="number"
                     min={boostLimits.minBoostGlobalCents / 100}
                     max={boostLimits.maxBoostGlobalCents / 100}
-                    step="0.50"
+                    step="0.01"
                     value={minBoost}
                     onChange={(e) => setMinBoost(e.target.value)}
                     className="w-full rounded-md border border-input bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neon"
@@ -905,7 +905,7 @@ function Dashboard() {
                     type="number"
                     min={boostLimits.minBoostGlobalCents / 100}
                     max={boostLimits.maxBoostGlobalCents / 100}
-                    step="1"
+                    step="0.01"
                     value={maxBoost}
                     onChange={(e) => setMaxBoost(e.target.value)}
                     className="w-full rounded-md border border-input bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neon"

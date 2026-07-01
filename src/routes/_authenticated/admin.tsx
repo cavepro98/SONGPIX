@@ -1073,7 +1073,7 @@ function AdminPage() {
                         <input
                           type="number"
                           min="0"
-                          step="1"
+                          step="0.01"
                           value={(Number(settings.min_boost_global_cents) / 100).toString()}
                           onChange={(e) =>
                             setSettings({
@@ -1091,7 +1091,7 @@ function AdminPage() {
                         <input
                           type="number"
                           min="0"
-                          step="1"
+                          step="0.01"
                           value={(Number(settings.max_boost_global_cents) / 100).toString()}
                           onChange={(e) =>
                             setSettings({
