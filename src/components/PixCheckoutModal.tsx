@@ -20,7 +20,13 @@ type Props = {
   payerName: string;
   // either existingItemId OR song
   existingItemId?: string;
-  song?: { url: string; title: string; artist?: string; thumbnailUrl?: string };
+  song?: {
+    url: string;
+    title: string;
+    artist?: string;
+    thumbnailUrl?: string;
+    source?: "youtube" | "spotify" | "soundcloud" | "upload";
+  };
   onApproved?: () => void;
 };
 

@@ -21,10 +21,11 @@ const BodySchema = z.object({
   existingItemId: z.string().uuid().optional(),
   song: z
     .object({
-      url: z.string().url().max(2000),
+      url: z.string().min(1).max(2000),
       title: z.string().min(1).max(200),
       artist: z.string().max(200).optional(),
       thumbnailUrl: z.string().url().max(2000).optional(),
+      source: z.enum(["youtube", "spotify", "soundcloud", "upload"]).optional(),
     })
     .optional(),
 });
@@ -64,7 +65,7 @@ export const Route = createFileRoute("/api/public/payments/create")({
           const { data: room, error: roomErr } = await supabaseAdmin
             .from("rooms")
             .select(
-              "id, owner_id, name, is_open, min_boost_cents, max_boost_cents, allow_youtube, allow_spotify, allow_soundcloud",
+              "id, owner_id, name, is_open, min_boost_cents, max_boost_cents, allow_youtube, allow_spotify, allow_soundcloud, allow_upload",
             )
             .eq("slug", body.roomSlug)
             .is("archived_at", null)
@@ -125,26 +126,52 @@ export const Route = createFileRoute("/api/public/payments/create")({
               source: existing.source,
             };
           } else if (body.song) {
-            const source = detectSource(body.song.url);
-            if (!source) return json(request, { error: "Fonte não suportada" }, 400);
-            if (source === "youtube" && !room.allow_youtube) {
-              return json(request, { error: "YouTube não permitido" }, 400);
-            }
-            if (source === "spotify" && !room.allow_spotify) {
-              return json(request, { error: "Spotify não permitido" }, 400);
-            }
-            if (source === "soundcloud" && !room.allow_soundcloud) {
-              return json(request, { error: "SoundCloud não permitido" }, 400);
-            }
+            if (body.song.source === "upload") {
+              if (!room.allow_upload) return json(request, { error: "Upload não permitido" }, 400);
+              const storagePath = body.song.url.trim();
+              const safePrefix = `${room.id}/`;
+              if (
+                !storagePath.startsWith(safePrefix) ||
+                storagePath.includes("..") ||
+                storagePath.includes("//")
+              ) {
+                return json(request, { error: "Arquivo inválido" }, 400);
+              }
+              const { error: signedErr } = await supabaseAdmin.storage
+                .from("song-uploads")
+                .createSignedUrl(storagePath, 60);
+              if (signedErr) return json(request, { error: "Arquivo não encontrado" }, 400);
+              songPayload = {
+                source: "upload",
+                url: storagePath,
+                title: body.song.title,
+                artist: body.song.artist ?? "",
+                thumbnail_url: "",
+              };
+            } else {
+              const parsedUrl = z.string().url().safeParse(body.song.url);
+              if (!parsedUrl.success) return json(request, { error: "Link inválido" }, 400);
+              const source = detectSource(parsedUrl.data);
+              if (!source) return json(request, { error: "Fonte não suportada" }, 400);
+              if (source === "youtube" && !room.allow_youtube) {
+                return json(request, { error: "YouTube não permitido" }, 400);
+              }
+              if (source === "spotify" && !room.allow_spotify) {
+                return json(request, { error: "Spotify não permitido" }, 400);
+              }
+              if (source === "soundcloud" && !room.allow_soundcloud) {
+                return json(request, { error: "SoundCloud não permitido" }, 400);
+              }
 
-            const meta = await fetchOembed(body.song.url, source);
-            songPayload = {
-              source,
-              url: body.song.url,
-              title: meta?.title ?? body.song.title,
-              artist: body.song.artist ?? meta?.author_name ?? "",
-              thumbnail_url: body.song.thumbnailUrl ?? meta?.thumbnail_url ?? "",
-            };
+              const meta = await fetchOembed(parsedUrl.data, source);
+              songPayload = {
+                source,
+                url: parsedUrl.data,
+                title: meta?.title ?? body.song.title,
+                artist: body.song.artist ?? meta?.author_name ?? "",
+                thumbnail_url: body.song.thumbnailUrl ?? meta?.thumbnail_url ?? "",
+              };
+            }
           }
 
           // 1) Create local row (pending)

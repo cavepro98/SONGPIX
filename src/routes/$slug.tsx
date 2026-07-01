@@ -2,7 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { submitTrack, submitUploadedTrack } from "@/lib/queue.functions";
+import {
+  preparePaidUploadedTrack,
+  submitTrack,
+  submitUploadedTrack,
+} from "@/lib/queue.functions";
 import PixCheckoutModal from "@/components/PixCheckoutModal";
 import { toast } from "sonner";
 import { ListMusic, Zap, Plus, Star, Upload, Loader2 } from "lucide-react";
@@ -112,11 +116,18 @@ function ViewerRoom() {
   const { slug } = Route.useParams();
   const submit = useServerFn(submitTrack);
   const submitUpload = useServerFn(submitUploadedTrack);
+  const preparePaidUpload = useServerFn(preparePaidUploadedTrack);
   const [pixOpen, setPixOpen] = useState(false);
   const [pixTarget, setPixTarget] = useState<{
     itemId?: string;
     amountCents: number;
-    song?: { url: string; title: string; artist?: string; thumbnailUrl?: string };
+    song?: {
+      url: string;
+      title: string;
+      artist?: string;
+      thumbnailUrl?: string;
+      source?: "youtube" | "spotify" | "soundcloud" | "upload";
+    };
   } | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [boostLimits, setBoostLimits] = useState<BoostLimits>(DEFAULT_BOOST_LIMITS);
@@ -283,12 +294,6 @@ function ViewerRoom() {
     };
   }, [room]);
 
-  useEffect(() => {
-    if (room?.require_payment && mode === "upload") {
-      setMode("link");
-    }
-  }, [mode, room?.require_payment]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!room) return;
@@ -358,16 +363,29 @@ function ViewerRoom() {
           reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
           reader.readAsDataURL(file);
         });
-        await submitUpload({
-          data: {
-            roomSlug: room.slug,
-            fileName: file.name,
-            fileBase64,
-            contentType: file.type || "audio/mpeg",
-            title: trackTitle.trim(),
-            submitterName: cleanName,
-          },
-        });
+        const uploadPayload = {
+          roomSlug: room.slug,
+          fileName: file.name,
+          fileBase64,
+          contentType: file.type || "audio/mpeg",
+          title: trackTitle.trim(),
+          submitterName: cleanName,
+        };
+        if (room.require_payment) {
+          const prepared = await preparePaidUpload({ data: uploadPayload });
+          setPixTarget({
+            amountCents: room.min_boost_cents,
+            song: {
+              url: prepared.url,
+              title: prepared.title,
+              source: "upload",
+            },
+          });
+          setPixOpen(true);
+          localStorage.setItem("songpix_name", cleanName);
+          return;
+        }
+        await submitUpload({ data: uploadPayload });
         setFile(null);
         setTrackTitle("");
         toast.success("Música enviada pro dono da live!");
@@ -517,8 +535,8 @@ function ViewerRoom() {
                   <h2 className="font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Pedir Música
                   </h2>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {room.require_payment ? "PIX_REQUIRED" : "INPUT_01"}
+                  <span className="text-xs text-muted-foreground">
+                    {room.require_payment ? "Pagamento via PIX" : "Envio livre"}
                   </span>
                 </div>
                 {room.require_payment && (
@@ -539,7 +557,7 @@ function ViewerRoom() {
                     )}
                   </div>
                 )}
-                {room.allow_upload && !room.require_payment && (
+                {room.allow_upload && (
                   <div className="mb-3 inline-flex border border-border">
                     <button
                       type="button"
@@ -628,7 +646,15 @@ function ViewerRoom() {
                         </>
                       ) : (
                         <>
-                          <Upload className="h-4 w-4" /> Enviar
+                          {room.require_payment ? (
+                            <>
+                              <Zap className="h-4 w-4" /> Pagar e enviar
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4" /> Enviar
+                            </>
+                          )}
                         </>
                       )}
                     </button>
@@ -1181,6 +1207,8 @@ function ViewerRoom() {
           song={pixTarget.song}
           onApproved={() => {
             setUrl("");
+            setFile(null);
+            setTrackTitle("");
             setPixTarget(null);
           }}
         />
