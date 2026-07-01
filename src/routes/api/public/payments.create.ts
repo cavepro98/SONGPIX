@@ -71,24 +71,37 @@ export const Route = createFileRoute("/api/public/payments/create")({
           if (roomErr) throw new Error(roomErr.message);
           if (!room) return json(request, { error: "Sala não encontrada" }, 404);
           if (!room.is_open) return json(request, { error: "A sala está fechada" }, 400);
-          if (body.amountCents < room.min_boost_cents)
+
+          const { data: settings } = await supabaseAdmin
+            .from("platform_settings")
+            .select("commission_rate, min_boost_global_cents, max_boost_global_cents")
+            .eq("id", 1)
+            .maybeSingle();
+          const globalMinCents = Number(settings?.min_boost_global_cents ?? 100);
+          const globalMaxCents = Number(settings?.max_boost_global_cents ?? 1_000_000);
+          const effectiveMinCents = Math.max(Number(room.min_boost_cents ?? 0), globalMinCents);
+          const effectiveMaxCents = Math.max(
+            effectiveMinCents,
+            Math.min(
+              Number(room.max_boost_cents || globalMaxCents),
+              Math.max(globalMinCents, globalMaxCents),
+            ),
+          );
+
+          if (body.amountCents < effectiveMinCents)
             return json(
               request,
-              { error: `Mínimo: R$ ${(room.min_boost_cents / 100).toFixed(2)}` },
+              { error: `Mínimo: R$ ${(effectiveMinCents / 100).toFixed(2)}` },
               400,
             );
-          if (room.max_boost_cents && body.amountCents > room.max_boost_cents)
+          if (body.amountCents > effectiveMaxCents)
             return json(
               request,
-              { error: `Máximo: R$ ${(room.max_boost_cents / 100).toFixed(2)}` },
+              { error: `Máximo: R$ ${(effectiveMaxCents / 100).toFixed(2)}` },
               400,
             );
 
           // Commission
-          const { data: settings } = await supabaseAdmin
-            .from("platform_settings")
-            .select("commission_rate")
-            .maybeSingle();
           const rate = Number(settings?.commission_rate ?? 0.1);
           const commission = Math.floor(body.amountCents * rate);
           const net = body.amountCents - commission;

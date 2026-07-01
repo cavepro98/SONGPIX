@@ -38,6 +38,11 @@ type Room = {
   require_payment: boolean;
 };
 
+type BoostLimits = {
+  minBoostGlobalCents: number;
+  maxBoostGlobalCents: number;
+};
+
 type QueueItem = {
   id: string;
   title: string;
@@ -71,6 +76,25 @@ function formatCents(c: number) {
   return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+const DEFAULT_BOOST_LIMITS: BoostLimits = {
+  minBoostGlobalCents: 100,
+  maxBoostGlobalCents: 1_000_000,
+};
+
+function normalizeRoomBoostLimits(room: Room | null, limits: BoostLimits) {
+  if (!room) return room;
+  const minBoostCents = Math.max(room.min_boost_cents, limits.minBoostGlobalCents);
+  const maxBoostCents = Math.min(
+    Math.max(room.max_boost_cents || limits.maxBoostGlobalCents, minBoostCents),
+    limits.maxBoostGlobalCents,
+  );
+  return {
+    ...room,
+    min_boost_cents: minBoostCents,
+    max_boost_cents: Math.max(minBoostCents, maxBoostCents),
+  };
+}
+
 function normalizeUserHandle(value: string) {
   const clean = value
     .normalize("NFKC")
@@ -95,6 +119,7 @@ function ViewerRoom() {
     song?: { url: string; title: string; artist?: string; thumbnailUrl?: string };
   } | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
+  const [boostLimits, setBoostLimits] = useState<BoostLimits>(DEFAULT_BOOST_LIMITS);
   const coverUrl = useCoverUrl(room?.cover_url ?? null);
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,27 +142,46 @@ function ViewerRoom() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const { data: r } = await supabase
-        .from("rooms")
-        .select(
-          "id, slug, name, description, cover_url, is_open, min_boost_cents, max_boost_cents, allow_upload, require_payment",
-        )
-        .eq("slug", slug)
-        .maybeSingle();
+      const [roomResult, limits] = await Promise.all([
+        supabase
+          .from("rooms")
+          .select(
+            "id, slug, name, description, cover_url, is_open, min_boost_cents, max_boost_cents, allow_upload, require_payment",
+          )
+          .eq("slug", slug)
+          .maybeSingle(),
+        fetch("/api/public/app-config")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((config) => {
+            const minBoostGlobalCents = Number(
+              config?.minBoostGlobalCents ?? DEFAULT_BOOST_LIMITS.minBoostGlobalCents,
+            );
+            const maxBoostGlobalCents = Number(
+              config?.maxBoostGlobalCents ?? DEFAULT_BOOST_LIMITS.maxBoostGlobalCents,
+            );
+            return {
+              minBoostGlobalCents,
+              maxBoostGlobalCents: Math.max(minBoostGlobalCents, maxBoostGlobalCents),
+            };
+          })
+          .catch(() => DEFAULT_BOOST_LIMITS),
+      ]);
       if (!mounted) return;
-      setRoom(r);
-      if (r) {
+      setBoostLimits(limits);
+      const roomWithLimits = normalizeRoomBoostLimits((roomResult.data as Room | null) ?? null, limits);
+      setRoom(roomWithLimits);
+      if (roomWithLimits) {
         const { data: q } = await supabase
           .from("queue_items")
           .select("*")
-          .eq("room_id", r.id)
+          .eq("room_id", roomWithLimits.id)
           .in("status", ["queued", "playing"]);
         if (!mounted) return;
         setItems(sortQueue((q ?? []) as QueueItem[]));
         const { data: h } = await supabase
           .from("queue_items")
           .select("*")
-          .eq("room_id", r.id)
+          .eq("room_id", roomWithLimits.id)
           .in("status", ["played", "skipped"])
           .order("played_at", { ascending: false })
           .limit(50);
@@ -180,7 +224,12 @@ function ViewerRoom() {
             setRoom(null);
             return;
           }
-          setRoom((r) => (r ? { ...r, ...(payload.new as Room) } : (payload.new as Room)));
+          setRoom((r) =>
+            normalizeRoomBoostLimits(
+              r ? { ...r, ...(payload.new as Room) } : (payload.new as Room),
+              boostLimits,
+            ),
+          );
         },
       )
       .on(

@@ -26,6 +26,24 @@ export const getPlatformSettings = createServerFn({ method: "GET" })
     return data;
   });
 
+export const getBoostPriceLimits = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("platform_settings")
+      .select("min_boost_global_cents, max_boost_global_cents")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const minBoostGlobalCents = Number(data?.min_boost_global_cents ?? 100);
+    const maxBoostGlobalCents = Number(data?.max_boost_global_cents ?? 1_000_000);
+    return {
+      minBoostGlobalCents,
+      maxBoostGlobalCents: Math.max(minBoostGlobalCents, maxBoostGlobalCents),
+    };
+  });
+
 const UpdateInput = z.object({
   platform_name: z.string().trim().min(1).max(60),
   commission_rate: z.number().min(0).max(1),
@@ -42,6 +60,9 @@ export const updatePlatformSettings = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => UpdateInput.parse(input))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
+    if (data.max_boost_global_cents < data.min_boost_global_cents) {
+      throw new Error("Fura fila máximo deve ser maior ou igual ao mínimo");
+    }
     const { error } = await context.supabase
       .from("platform_settings")
       .update({ ...data, updated_at: new Date().toISOString() })

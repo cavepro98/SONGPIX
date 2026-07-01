@@ -41,6 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getBoostPriceLimits } from "@/lib/admin-settings.functions";
 import { getMyEarnings } from "@/lib/withdrawals.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -61,6 +62,10 @@ type Room = {
 
 const DASHBOARD_WELCOME_STORAGE_KEY = "songpix-dashboard-welcome-seen";
 const SUPPORT_WHATSAPP_URL = "https://wa.me/5598984723943";
+const DEFAULT_BOOST_LIMITS = {
+  minBoostGlobalCents: 100,
+  maxBoostGlobalCents: 1_000_000,
+};
 
 function slugify(s: string) {
   return s
@@ -72,11 +77,17 @@ function slugify(s: string) {
     .slice(0, 40);
 }
 
+function formatCents(c: number) {
+  return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 function Dashboard() {
   const navigate = useNavigate();
   const fetchEarnings = useServerFn(getMyEarnings);
+  const fetchBoostLimits = useServerFn(getBoostPriceLimits);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableCents, setAvailableCents] = useState(0);
+  const [boostLimits, setBoostLimits] = useState(DEFAULT_BOOST_LIMITS);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -109,7 +120,7 @@ function Dashboard() {
       setLoading(false);
       return;
     }
-    const [roomResult, earnings] = await Promise.all([
+    const [roomResult, earnings, limits] = await Promise.all([
       supabase
         .from("rooms")
         .select(
@@ -121,11 +132,16 @@ function Dashboard() {
         toast.error(err instanceof Error ? err.message : "Erro ao carregar saldo");
         return null;
       }),
+      fetchBoostLimits().catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Erro ao carregar limites do Fura fila");
+        return DEFAULT_BOOST_LIMITS;
+      }),
     ]);
     const { data, error } = roomResult;
     if (error) toast.error(error.message);
     else setRooms((data ?? []) as Room[]);
     setAvailableCents(Number(earnings?.availableCents ?? 0));
+    setBoostLimits(limits ?? DEFAULT_BOOST_LIMITS);
     setLoading(false);
   }
 
@@ -159,8 +175,8 @@ function Dashboard() {
     if (coverPreview) URL.revokeObjectURL(coverPreview);
     setCoverPreview(null);
     setExistingCoverPath(null);
-    setMinBoost("1.00");
-    setMaxBoost("500.00");
+    setMinBoost((boostLimits.minBoostGlobalCents / 100).toFixed(2));
+    setMaxBoost((boostLimits.maxBoostGlobalCents / 100).toFixed(2));
     setMaxDurationMin("10");
     setAllowYoutube(true);
     setAllowSpotify(true);
@@ -189,8 +205,16 @@ function Dashboard() {
     if (coverPreview) URL.revokeObjectURL(coverPreview);
     setCoverPreview(null);
     setExistingCoverPath(data.cover_url ?? null);
-    setMinBoost(((data.min_boost_cents ?? 100) / 100).toFixed(2));
-    setMaxBoost(((data.max_boost_cents ?? 50000) / 100).toFixed(2));
+    const minBoostCents = Math.max(
+      boostLimits.minBoostGlobalCents,
+      Number(data.min_boost_cents ?? boostLimits.minBoostGlobalCents),
+    );
+    const maxBoostCents = Math.min(
+      boostLimits.maxBoostGlobalCents,
+      Number(data.max_boost_cents ?? boostLimits.maxBoostGlobalCents),
+    );
+    setMinBoost((minBoostCents / 100).toFixed(2));
+    setMaxBoost((Math.max(minBoostCents, maxBoostCents) / 100).toFixed(2));
     setMaxDurationMin(String(Math.max(1, Math.round((data.max_duration_sec ?? 600) / 60))));
     setAllowYoutube(!!data.allow_youtube);
     setAllowSpotify(!!data.allow_spotify);
@@ -229,8 +253,26 @@ function Dashboard() {
       toast.error("Preço mínimo inválido");
       return;
     }
+    if (cents < boostLimits.minBoostGlobalCents) {
+      toast.error(
+        `Fura fila mínimo permitido pelo admin: ${formatCents(boostLimits.minBoostGlobalCents)}`,
+      );
+      return;
+    }
+    if (cents > boostLimits.maxBoostGlobalCents) {
+      toast.error(
+        `Fura fila mínimo não pode passar de ${formatCents(boostLimits.maxBoostGlobalCents)}`,
+      );
+      return;
+    }
     if (!Number.isFinite(maxCents) || maxCents < cents) {
       toast.error("Preço máximo deve ser maior que o mínimo");
+      return;
+    }
+    if (maxCents > boostLimits.maxBoostGlobalCents) {
+      toast.error(
+        `Fura fila máximo permitido pelo admin: ${formatCents(boostLimits.maxBoostGlobalCents)}`,
+      );
       return;
     }
     const maxDurMin = parseInt(maxDurationMin, 10);
@@ -846,7 +888,8 @@ function Dashboard() {
                   </label>
                   <input
                     type="number"
-                    min="0"
+                    min={boostLimits.minBoostGlobalCents / 100}
+                    max={boostLimits.maxBoostGlobalCents / 100}
                     step="0.50"
                     value={minBoost}
                     onChange={(e) => setMinBoost(e.target.value)}
@@ -859,7 +902,8 @@ function Dashboard() {
                   </label>
                   <input
                     type="number"
-                    min="0"
+                    min={boostLimits.minBoostGlobalCents / 100}
+                    max={boostLimits.maxBoostGlobalCents / 100}
                     step="1"
                     value={maxBoost}
                     onChange={(e) => setMaxBoost(e.target.value)}
@@ -868,7 +912,8 @@ function Dashboard() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Range que o espectador pode pagar pra furar a fila.
+                O admin permite valores entre {formatCents(boostLimits.minBoostGlobalCents)} e{" "}
+                {formatCents(boostLimits.maxBoostGlobalCents)}.
               </p>
             </fieldset>
 

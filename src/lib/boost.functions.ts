@@ -23,10 +23,22 @@ export const boostQueueItem = createServerFn({ method: "POST" })
     if (item.status !== "queued") throw new Error("Essa música não está mais na fila");
 
     const room = item.rooms as unknown as { min_boost_cents: number; max_boost_cents: number };
-    if (data.amountCents < room.min_boost_cents) {
+    const { data: settings } = await supabaseAdmin
+      .from("platform_settings")
+      .select("min_boost_global_cents, max_boost_global_cents")
+      .eq("id", 1)
+      .maybeSingle();
+    const globalMinCents = Number(settings?.min_boost_global_cents ?? 100);
+    const globalMaxCents = Number(settings?.max_boost_global_cents ?? 1_000_000);
+    const effectiveMinCents = Math.max(Number(room.min_boost_cents ?? 0), globalMinCents);
+    const effectiveMaxCents = Math.max(
+      effectiveMinCents,
+      Math.min(Number(room.max_boost_cents || globalMaxCents), Math.max(globalMinCents, globalMaxCents)),
+    );
+    if (data.amountCents < effectiveMinCents) {
       throw new Error("Valor abaixo do fura fila mínimo");
     }
-    if (room.max_boost_cents && data.amountCents > room.max_boost_cents) {
+    if (data.amountCents > effectiveMaxCents) {
       throw new Error("Valor acima do fura fila máximo");
     }
 
