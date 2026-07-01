@@ -351,7 +351,10 @@ function ViewerRoom() {
 
   const playing = animatedPlaying;
   const queuedItems = items.filter((i) => i.status === "queued");
-  const topItems = queuedItems.filter((i) => i.is_top);
+  const topItems = sortQueue(
+    items.filter((i) => i.is_top && (i.status === "queued" || i.status === "playing")),
+  );
+  const topQueuedItems = queuedItems.filter((i) => i.is_top);
   const queue = queuedItems.filter((i) => !i.is_top);
 
   return (
@@ -601,6 +604,11 @@ function ViewerRoom() {
                     <div className="absolute right-0 top-0 bg-neon-foreground px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
                       No Ar
                     </div>
+                    {playing.is_top && (
+                      <div className="absolute left-0 top-0 inline-flex items-center gap-1 bg-background px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
+                        <Star className="h-2.5 w-2.5 fill-current" /> Top da Sala
+                      </div>
+                    )}
                     <div className="relative z-10">
                       {playing.thumbnail_url ? (
                         <img
@@ -645,7 +653,7 @@ function ViewerRoom() {
                 )}
 
                 {/* Top da Fila */}
-                {topItems.length > 0 && (
+                {topQueuedItems.length > 0 && (
                   <div
                     className={`space-y-2 transition-all duration-700 ${playingLeaving ? "opacity-40 blur-[2px]" : "opacity-100"}`}
                   >
@@ -654,10 +662,10 @@ function ViewerRoom() {
                         <Star className="h-3 w-3 fill-current" /> Top da Fila
                       </h2>
                       <span className="font-mono text-[10px] text-neon/70">
-                        {topItems.length.toString().padStart(2, "0")} ESCOLHIDAS
+                        {topQueuedItems.length.toString().padStart(2, "0")} ESCOLHIDAS
                       </span>
                     </div>
-                    {topItems.map((item, idx) => (
+                    {topQueuedItems.map((item, idx) => (
                       <div
                         key={item.id}
                         className="border border-neon/40 bg-neon/[0.06] animate-[soft-in_0.9s_cubic-bezier(0.22,1,0.36,1)_both]"
@@ -707,7 +715,7 @@ function ViewerRoom() {
                 )}
 
                 {/* Queue header */}
-                {topItems.length > 0 && queue.length > 0 && (
+                {topQueuedItems.length > 0 && queue.length > 0 && (
                   <div className="flex items-center justify-between border-b border-border pb-2 pt-2">
                     <h2 className="font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       Resto da Fila
@@ -720,7 +728,7 @@ function ViewerRoom() {
 
                 {/* Queue items */}
                 <div className="space-y-2">
-                  {queue.length === 0 && topItems.length === 0 ? (
+                  {queue.length === 0 && topQueuedItems.length === 0 ? (
                     <div className="border border-dashed border-border bg-black/40 p-6 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
                       Fila vazia — manda a sua
                     </div>
@@ -862,7 +870,16 @@ function ViewerRoom() {
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <Marquee className="text-sm font-bold sm:text-base">{item.title}</Marquee>
+                        <div className="flex min-w-0 items-center gap-2">
+                          {item.status === "playing" && (
+                            <span className="inline-flex shrink-0 items-center gap-1 border border-neon/40 bg-neon/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
+                              Tocando agora
+                            </span>
+                          )}
+                          <Marquee className="min-w-0 flex-1 text-sm font-bold sm:text-base">
+                            {item.title}
+                          </Marquee>
+                        </div>
                         {item.artist && (
                           <Marquee className="text-xs text-muted-foreground">{item.artist}</Marquee>
                         )}

@@ -17,6 +17,7 @@ import {
   Menu,
   Wallet,
   Pencil,
+  MessageCircle,
 } from "lucide-react";
 import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
@@ -55,6 +56,9 @@ type Room = {
   total_gross_cents?: number;
 };
 
+const DASHBOARD_WELCOME_STORAGE_KEY = "songpix-dashboard-welcome-seen";
+const SUPPORT_WHATSAPP_URL = "https://wa.me/5598984723943";
+
 function slugify(s: string) {
   return s
     .toLowerCase()
@@ -72,6 +76,7 @@ function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [existingCoverPath, setExistingCoverPath] = useState<string | null>(null);
@@ -110,6 +115,25 @@ function Dashboard() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.localStorage.getItem(DASHBOARD_WELCOME_STORAGE_KEY)) {
+      setWelcomeOpen(true);
+    }
+  }, []);
+
+  function closeWelcome() {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DASHBOARD_WELCOME_STORAGE_KEY, "1");
+    }
+    setWelcomeOpen(false);
+  }
+
+  function createFirstRoomFromWelcome() {
+    closeWelcome();
+    setOpen(true);
+  }
 
   function resetForm() {
     setName("");
@@ -408,9 +432,17 @@ function Dashboard() {
             </div>
           </div>
 
+          <a
+            href={SUPPORT_WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mx-3 mb-2 mt-auto flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+          >
+            <MessageCircle className="h-4 w-4" /> Suporte WhatsApp
+          </a>
           <button
             onClick={handleSignOut}
-            className="mx-3 mb-4 mt-auto flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+            className="mx-3 mb-4 flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
           >
             <LogOut className="h-4 w-4" /> Sair
           </button>
@@ -612,6 +644,62 @@ function Dashboard() {
           </div>
         </main>
       </div>
+
+      <Dialog
+        open={welcomeOpen}
+        onOpenChange={(v) => {
+          if (!v) closeWelcome();
+          else setWelcomeOpen(true);
+        }}
+      >
+        <DialogContent className="bg-surface border-border sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl font-bold italic uppercase tracking-tighter">
+              Bem-vindo ao SongPIX
+            </DialogTitle>
+            <DialogDescription>
+              Monte uma sala para sua live, compartilhe o link com o público e receba pedidos de
+              música com boost para destacar no Top.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {[
+              { icon: Plus, text: "Crie uma sala com capa, fontes aceitas e valor de boost." },
+              { icon: Share2, text: "Envie o link público para o chat pedir músicas." },
+              { icon: Zap, text: "Use Boost e Top para organizar os pedidos mais importantes." },
+              { icon: Wallet, text: "Acompanhe ganhos e solicite saques quando atingir o mínimo." },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.text} className="flex gap-3 border border-border bg-background/40 p-3">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center bg-neon text-neon-foreground">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">{item.text}</p>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            {!loading && rooms.length === 0 && (
+              <button
+                type="button"
+                onClick={createFirstRoomFromWelcome}
+                className="inline-flex items-center justify-center gap-1 rounded-md border border-neon bg-neon px-4 py-2 text-sm font-semibold text-neon-foreground hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" /> Criar primeira sala
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={closeWelcome}
+              className="rounded-md border border-border bg-surface-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Começar
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={open}

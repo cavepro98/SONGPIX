@@ -9,6 +9,7 @@ import { useAnimatedSwap } from "@/hooks/use-animated-swap";
 import {
   OVERLAY_ALERT_TEST_CHANNEL,
   OVERLAY_ALERT_TEST_STORAGE_KEY,
+  coerceOverlayAlertTestMessage,
   parseOverlayAlertTestMessage,
   type OverlayAlertTestMessage,
 } from "@/lib/overlay-alert-test";
@@ -203,7 +204,7 @@ function Overlay() {
           "request-qr": 420,
           supporter: 320,
           boosts: 360,
-          alert: 560,
+          alert: 480,
         } as const)[
           widgetsKey[0]!
         ]
@@ -213,8 +214,8 @@ function Overlay() {
       ? ({
           now: 200,
           music: 720,
-          request: 200,
-          "request-qr": 280,
+          request: 230,
+          "request-qr": 300,
           supporter: 360,
           boosts: 480,
           alert: 220,
@@ -251,7 +252,7 @@ function Overlay() {
   );
 
   useEffect(() => {
-    if (!showAlert || typeof window === "undefined") return;
+    if (!showAlert || !room || typeof window === "undefined") return;
 
     function enqueueTestAlert(message: OverlayAlertTestMessage | null) {
       if (!message) return;
@@ -269,6 +270,25 @@ function Overlay() {
       };
     }
 
+    const eventsChannel = supabase
+      .channel(`overlay-events-${room.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "overlay_test_events",
+          filter: `room_id=eq.${room.id}`,
+        },
+        (payload) => {
+          const next = coerceOverlayAlertTestMessage(
+            (payload.new as { payload?: unknown } | null)?.payload ?? null,
+          );
+          enqueueTestAlert(next);
+        },
+      )
+      .subscribe();
+
     const onStorage = (event: StorageEvent) => {
       if (event.key !== OVERLAY_ALERT_TEST_STORAGE_KEY || !event.newValue) return;
       enqueueTestAlert(parseOverlayAlertTestMessage(event.newValue));
@@ -285,8 +305,9 @@ function Overlay() {
       window.clearInterval(poll);
       window.removeEventListener("storage", onStorage);
       channel?.close();
+      supabase.removeChannel(eventsChannel);
     };
-  }, [showAlert, slug]);
+  }, [room, showAlert, slug]);
 
   useEffect(() => {
     const seen = seenPaidRef.current;
@@ -542,21 +563,21 @@ function Overlay() {
 
           {show("request") && (
             <WidgetCard label="Peça sua música grátis" icon={<Zap className="h-3 w-3" />}>
-              <div className="relative overflow-hidden border border-neon/30 bg-neon/[0.06] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
-                <div className="absolute right-0 top-0 border-l border-b border-neon/30 bg-neon px-2 py-1 font-display text-[9px] font-black uppercase tracking-[0.2em] text-neon-foreground">
+              <div className="relative overflow-hidden border border-neon/30 bg-neon/[0.06] p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                <div className="absolute right-0 top-0 border-l border-b border-neon/30 bg-neon px-2 py-1 font-display text-[8px] font-black uppercase tracking-[0.18em] text-neon-foreground">
                   ao vivo
                 </div>
-                <div className="pr-16">
-                  <div className="font-display text-2xl font-black italic uppercase leading-none tracking-tight text-foreground">
+                <div className="space-y-2 pr-14">
+                  <div className="font-display text-[26px] font-black italic uppercase leading-[0.92] tracking-tight text-foreground">
                     Peça sua música grátis
                   </div>
-                  <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                     link direto da sala
                   </div>
-                  <div className="mt-3 truncate font-display text-lg font-bold uppercase text-neon">
+                  <div className="truncate font-display text-base font-bold uppercase text-neon">
                     {room.slug}
                   </div>
-                  <div className="mt-1 truncate border-t border-border/70 pt-2 font-mono text-[11px] text-neon">
+                  <div className="truncate border-t border-border/70 pt-2 font-mono text-[11px] text-neon">
                     {publicUrlLabel}
                   </div>
                 </div>
@@ -566,24 +587,24 @@ function Overlay() {
 
           {show("request-qr") && (
             <WidgetCard label="Peça sua música grátis + QR" icon={<Zap className="h-3 w-3" />}>
-              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border border-neon/30 bg-neon/[0.06] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
-                <div className="shrink-0 bg-white p-2.5">
-                  <QRCodeSVG value={publicUrl} size={96} level="M" />
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 border border-neon/30 bg-neon/[0.06] p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                <div className="grid h-[88px] w-[88px] place-items-center bg-white p-2">
+                  <QRCodeSVG value={publicUrl} size={72} level="M" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-display text-xl font-black italic uppercase leading-none tracking-tight text-foreground">
+                <div className="min-w-0 space-y-2">
+                  <div className="font-display text-lg font-black italic uppercase leading-[0.95] tracking-tight text-foreground">
                     Peça sua música grátis
                   </div>
-                  <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                     escaneie ou digite
                   </div>
-                  <div className="mt-3 truncate font-display text-lg font-bold uppercase text-neon">
+                  <div className="truncate font-display text-base font-bold uppercase text-neon">
                     {room.slug}
                   </div>
-                  <div className="mt-2 border-t border-border/70 pt-2">
+                  <div className="border-t border-border/70 pt-2">
                     <div className="truncate font-mono text-[11px] text-neon">{publicUrlLabel}</div>
                   </div>
-                  <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
                     celular na camera e entra direto
                   </div>
                 </div>
@@ -636,10 +657,18 @@ function Overlay() {
             </WidgetCard>
           )}
 
-          {show("alert") && displayedAlert && (
-            <div className="relative min-h-[180px]">
-              <SupporterAlertCard alert={displayedAlert} leaving={alertLeaving} />
-            </div>
+          {show("alert") && (
+            <WidgetCard label="Alerta de apoio" icon={<Zap className="h-3 w-3" />}>
+              {displayedAlert ? (
+                <div className="relative min-h-[136px]">
+                  <SupporterAlertCard alert={displayedAlert} leaving={alertLeaving} />
+                </div>
+              ) : (
+                <div className="grid min-h-[136px] place-items-center">
+                  <EmptyLine text="Aguardando apoio..." />
+                </div>
+              )}
+            </WidgetCard>
           )}
         </div>
       </div>
@@ -650,19 +679,19 @@ function Overlay() {
 function SupporterAlertCard({ alert, leaving }: { alert: AlertPayload; leaving: boolean }) {
   return (
     <div
-      className={`relative overflow-hidden border-2 border-neon bg-neon text-neon-foreground shadow-[0_0_60px_var(--neon)] [--marquee-fade:var(--neon)] ${
+      className={`relative overflow-hidden border border-neon/40 bg-neon text-neon-foreground [--marquee-fade:var(--neon)] ${
         leaving
           ? "animate-[soft-out_0.9s_cubic-bezier(0.4,0,0.2,1)_both]"
-          : "animate-[alert-in_0.6s_cubic-bezier(0.22,1,0.36,1)_both]"
+          : "animate-[soft-in_1.1s_cubic-bezier(0.22,1,0.36,1)_both]"
       }`}
     >
       <div className="pointer-events-none absolute inset-0 opacity-50 [background:repeating-linear-gradient(45deg,transparent_0_10px,rgba(0,0,0,0.08)_10px_20px)] animate-[alert-stripes_1.2s_linear_infinite]" />
-      <div className="relative flex items-center gap-4 p-4">
-        <div className="grid h-20 w-20 shrink-0 place-items-center border-2 border-neon-foreground/40 bg-neon-foreground/10 animate-[alert-pop_0.9s_ease-out_both]">
+      <div className="relative flex min-h-[136px] items-center gap-3 p-3">
+        <div className="grid h-16 w-16 shrink-0 place-items-center border border-neon-foreground/40 bg-neon-foreground/10 animate-[alert-pop_0.9s_ease-out_both]">
           {alert.thumb ? (
             <img src={alert.thumb} alt="" className="h-full w-full object-cover" />
           ) : (
-            <Sparkles className="h-8 w-8" />
+            <Sparkles className="h-7 w-7" />
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -671,7 +700,7 @@ function SupporterAlertCard({ alert, leaving }: { alert: AlertPayload; leaving: 
             Novo apoio
           </p>
           <Marquee
-            className="font-display text-2xl font-extrabold italic uppercase leading-tight tracking-tight"
+            className="font-display text-xl font-extrabold italic uppercase leading-tight tracking-tight"
             speed={45}
           >
             {alert.name}
@@ -680,7 +709,7 @@ function SupporterAlertCard({ alert, leaving }: { alert: AlertPayload; leaving: 
             apoiou: {alert.title}
           </Marquee>
         </div>
-        <div className="shrink-0 skew-x-[-12deg] border-2 border-neon-foreground bg-neon-foreground px-3 py-2 font-display text-xl font-black text-neon animate-[alert-pop_0.9s_0.1s_ease-out_both]">
+        <div className="shrink-0 skew-x-[-12deg] border border-neon-foreground bg-neon-foreground px-3 py-2 font-display text-base font-black text-neon animate-[alert-pop_0.9s_0.1s_ease-out_both]">
           <span className="inline-block skew-x-[12deg] tabular-nums">
             +
             {(alert.amountCents / 100).toLocaleString("pt-BR", {

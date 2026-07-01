@@ -49,14 +49,42 @@ export function dispatchOverlayAlertTest(message: OverlayAlertTestMessage) {
   return delivered;
 }
 
+export function coerceOverlayAlertTestMessage(value: unknown): OverlayAlertTestMessage | null {
+  if (!value || typeof value !== "object") return null;
+  const parsed = value as Partial<OverlayAlertTestMessage>;
+  if (parsed.type !== "overlay-alert-test" || !parsed.slug || !parsed.ts || !parsed.alert) {
+    return null;
+  }
+
+  const alert = parsed.alert as Partial<OverlayAlertTestPayload>;
+  if (
+    !alert.id ||
+    !alert.name ||
+    !alert.title ||
+    typeof alert.amountCents !== "number" ||
+    !Number.isFinite(alert.amountCents)
+  ) {
+    return null;
+  }
+
+  return {
+    type: "overlay-alert-test",
+    slug: parsed.slug,
+    ts: parsed.ts,
+    alert: {
+      id: alert.id,
+      name: alert.name,
+      title: alert.title,
+      amountCents: alert.amountCents,
+      thumb: alert.thumb ?? null,
+    },
+  };
+}
+
 export function parseOverlayAlertTestMessage(raw: string | null): OverlayAlertTestMessage | null {
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as OverlayAlertTestMessage;
-    if (parsed?.type !== "overlay-alert-test" || !parsed.slug || !parsed.ts || !parsed.alert) {
-      return null;
-    }
-    return parsed;
+    return coerceOverlayAlertTestMessage(JSON.parse(raw));
   } catch {
     return null;
   }

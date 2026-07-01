@@ -28,7 +28,8 @@ import { useCoverUrl } from "@/lib/use-cover-url";
 import { SourceBadge } from "@/components/SourceBadge";
 import { Marquee } from "@/components/Marquee";
 import { useAnimatedSwap } from "@/hooks/use-animated-swap";
-import { dispatchOverlayAlertTest, makeOverlayAlertTestMessage } from "@/lib/overlay-alert-test";
+import { dispatchOverlayAlertTest } from "@/lib/overlay-alert-test";
+import { triggerOverlayAlertTest } from "@/lib/overlay-alert.functions";
 import { listRoomPayments } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_authenticated/rooms/$slug")({
@@ -334,7 +335,9 @@ function RoomPanel() {
   async function toggleTop(item: QueueItem) {
     const newVal = !item.is_top;
     if (newVal) {
-      const currentTopCount = items.filter((i) => i.is_top && i.status === "queued").length;
+      const currentTopCount = items.filter(
+        (i) => i.is_top && (i.status === "queued" || i.status === "playing"),
+      ).length;
       if (currentTopCount >= 10) {
         return toast.error("Limite do Top atingido (10 músicas)");
       }
@@ -418,6 +421,10 @@ function RoomPanel() {
 
   const playing = animatedPlaying;
   const queue = items.filter((i) => i.status === "queued");
+  const topItems = sortQueue(
+    items.filter((i) => i.is_top && (i.status === "queued" || i.status === "playing")),
+  );
+  const topQueuedItems = sortQueue(items.filter((i) => i.is_top && i.status === "queued"));
   const totalCents =
     items.reduce((s, i) => s + i.paid_amount_cents, 0) +
     history.reduce((s, i) => s + i.paid_amount_cents, 0);
@@ -545,7 +552,7 @@ function RoomPanel() {
               t === "queue"
                 ? items.filter((i) => i.status === "queued" || i.status === "playing").length
                 : t === "top"
-                  ? items.filter((i) => i.is_top && i.status === "queued").length
+                  ? topItems.length
                   : t === "history"
                     ? history.length
                     : (earnings?.payments.length ?? 0);
@@ -608,6 +615,11 @@ function RoomPanel() {
               <div className="absolute right-0 top-0 bg-neon-foreground px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
                 No Ar
               </div>
+              {playing.is_top && (
+                <div className="absolute left-0 top-0 inline-flex items-center gap-1 bg-background px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
+                  <Star className="h-2.5 w-2.5 fill-current" /> Top da Sala
+                </div>
+              )}
               <div className="flex items-center gap-5">
                 {playing.thumbnail_url ? (
                   <img
@@ -838,19 +850,14 @@ function RoomPanel() {
                 <Star className="h-3.5 w-3.5 fill-current" /> Top 10 da Sala
               </h2>
               <span className="font-mono text-[10px] uppercase tracking-widest text-neon/70">
-                {items
-                  .filter((i) => i.is_top && i.status === "queued")
-                  .length.toString()
-                  .padStart(2, "0")}{" "}
-                / 10
+                {topItems.length.toString().padStart(2, "0")} / 10
               </span>
             </div>
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Arraste para reordenar · estas músicas aparecem no Top da Fila da página pública
+              Arraste para reordenar as músicas em fila · a música tocando também conta no Top
             </p>
             {(() => {
-              const topGroup = sortQueue(items.filter((i) => i.is_top && i.status === "queued"));
-              if (topGroup.length === 0) {
+              if (topItems.length === 0) {
                 return (
                   <div className="border border-dashed border-border bg-black/40 p-8 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
                     Nenhuma música no Top — clique na ★ de qualquer música da fila
@@ -859,85 +866,109 @@ function RoomPanel() {
               }
               return (
                 <div className="space-y-2">
-                  {topGroup.map((item, idx) => (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={(e) => {
-                        setDragId(item.id);
-                        e.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                        if (dragOverId !== item.id) setDragOverId(item.id);
-                      }}
-                      onDragLeave={() => {
-                        if (dragOverId === item.id) setDragOverId(null);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        handleDrop(item.id, topGroup);
-                      }}
-                      onDragEnd={() => {
-                        setDragId(null);
-                        setDragOverId(null);
-                      }}
-                      className={`flex cursor-grab items-center gap-3 border border-neon/40 bg-neon/[0.06] p-3 transition-all active:cursor-grabbing ${
-                        dragId === item.id ? "opacity-40" : ""
-                      } ${dragOverId === item.id && dragId !== item.id ? "border-neon ring-1 ring-neon" : ""}`}
-                    >
-                      <span className="grid h-8 w-8 shrink-0 place-items-center border border-neon bg-neon/15 font-display text-sm font-bold tabular-nums text-neon">
-                        {(idx + 1).toString().padStart(2, "0")}
-                      </span>
-                      {item.thumbnail_url ? (
-                        <img
-                          src={item.thumbnail_url}
-                          alt=""
-                          className="h-12 w-12 shrink-0 border border-neon/40 object-cover"
-                        />
-                      ) : (
-                        <div className="grid h-12 w-12 shrink-0 place-items-center border border-neon/40 bg-surface-2">
-                          <ListMusic className="h-4 w-4 text-neon/60" />
+                  {topItems.map((item, idx) => {
+                    const isPlayingTop = item.status === "playing";
+                    const queuedIdx = topQueuedItems.findIndex((it) => it.id === item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        draggable={!isPlayingTop}
+                        onDragStart={(e) => {
+                          if (isPlayingTop) return;
+                          setDragId(item.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragOver={(e) => {
+                          if (isPlayingTop) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          if (dragOverId !== item.id) setDragOverId(item.id);
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverId === item.id) setDragOverId(null);
+                        }}
+                        onDrop={(e) => {
+                          if (isPlayingTop) return;
+                          e.preventDefault();
+                          handleDrop(item.id, topQueuedItems);
+                        }}
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setDragOverId(null);
+                        }}
+                        className={`flex items-center gap-3 border border-neon/40 bg-neon/[0.06] p-3 transition-all ${
+                          isPlayingTop ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+                        } ${dragId === item.id ? "opacity-40" : ""} ${
+                          dragOverId === item.id && dragId !== item.id
+                            ? "border-neon ring-1 ring-neon"
+                            : ""
+                        }`}
+                      >
+                        <span className="grid h-8 w-8 shrink-0 place-items-center border border-neon bg-neon/15 font-display text-sm font-bold tabular-nums text-neon">
+                          {(idx + 1).toString().padStart(2, "0")}
+                        </span>
+                        {item.thumbnail_url ? (
+                          <img
+                            src={item.thumbnail_url}
+                            alt=""
+                            className="h-12 w-12 shrink-0 border border-neon/40 object-cover"
+                          />
+                        ) : (
+                          <div className="grid h-12 w-12 shrink-0 place-items-center border border-neon/40 bg-surface-2">
+                            <ListMusic className="h-4 w-4 text-neon/60" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            {isPlayingTop && (
+                              <span className="inline-flex shrink-0 items-center gap-1 border border-neon/40 bg-neon/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
+                                <Play className="h-2.5 w-2.5 fill-current" /> Tocando agora
+                              </span>
+                            )}
+                            <Marquee className="min-w-0 flex-1 text-sm font-bold">
+                              {item.title}
+                            </Marquee>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <SourceBadge source={item.source} />
+                            <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                              {item.artist ? `${item.artist} · ` : ""}
+                              {item.submitter_name}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <Marquee className="text-sm font-bold">{item.title}</Marquee>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <SourceBadge source={item.source} />
-                          <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                            {item.artist ? `${item.artist} · ` : ""}
-                            {item.submitter_name}
-                          </span>
+                        <div className="flex shrink-0 items-center gap-1">
+                          {!isPlayingTop && (
+                            <>
+                              <button
+                                onClick={() => moveItem(item, -1)}
+                                title="Subir"
+                                disabled={queuedIdx <= 0}
+                                className="border border-border p-1.5 text-muted-foreground hover:border-neon hover:text-neon disabled:opacity-30"
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => moveItem(item, 1)}
+                                title="Descer"
+                                disabled={queuedIdx < 0 || queuedIdx === topQueuedItems.length - 1}
+                                className="border border-l-0 border-border p-1.5 text-muted-foreground hover:border-neon hover:text-neon disabled:opacity-30"
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => toggleTop(item)}
+                            title="Remover do Top"
+                            className="border border-border p-2 text-neon hover:border-destructive hover:text-destructive"
+                          >
+                            <Star className="h-4 w-4 fill-current" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          onClick={() => moveItem(item, -1)}
-                          title="Subir"
-                          disabled={idx === 0}
-                          className="border border-border p-1.5 text-muted-foreground hover:border-neon hover:text-neon disabled:opacity-30"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => moveItem(item, 1)}
-                          title="Descer"
-                          disabled={idx === topGroup.length - 1}
-                          className="border border-l-0 border-border p-1.5 text-muted-foreground hover:border-neon hover:text-neon disabled:opacity-30"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => toggleTop(item)}
-                          title="Remover do Top"
-                          className="border border-border p-2 text-neon hover:border-destructive hover:text-destructive"
-                        >
-                          <Star className="h-4 w-4 fill-current" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()}
@@ -1148,7 +1179,6 @@ function RoomPanel() {
       {overlayOpen && (
         <OverlayBuilder
           slug={slug}
-          roomName={room?.name ?? null}
           onClose={() => setOverlayOpen(false)}
         />
       )}
@@ -1167,7 +1197,7 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
     key: "alert",
     label: "🔔 Alerta de apoio (com som)",
     desc: "Pop-up animado + chime quando alguém faz um boost. Mantenha o áudio do Browser Source ativo no OBS.",
-    size: "560 × 220",
+    size: "480 × 220",
   },
   {
     key: "now",
@@ -1185,13 +1215,13 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
     key: "request",
     label: "Peça sua música grátis",
     desc: "Versão compacta só com a URL pública, sem QR Code.",
-    size: "520 × 200",
+    size: "520 × 230",
   },
   {
     key: "request-qr",
     label: "Peça sua música grátis + QR",
     desc: "Versão compacta com QR Code e link público da sala.",
-    size: "420 × 280",
+    size: "420 × 300",
   },
   { key: "boosts", label: "Top boosts", desc: "Top 5 apoios por valor.", size: "360 × 480" },
   {
@@ -1204,13 +1234,12 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
 
 function OverlayBuilder({
   slug,
-  roomName,
   onClose,
 }: {
   slug: string;
-  roomName: string | null;
   onClose: () => void;
 }) {
+  const sendOverlayAlertTest = useServerFn(triggerOverlayAlertTest);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const [transparent, setTransparent] = useState(true);
 
@@ -1224,13 +1253,18 @@ function OverlayBuilder({
     toast.success("URL copiada — cola no OBS ou TikTok Studio como Browser Source");
   }
 
-  function sendAlertTest() {
-    const sent = dispatchOverlayAlertTest(makeOverlayAlertTestMessage(slug, roomName ?? undefined));
-    if (!sent) {
-      toast.error("Seu navegador não conseguiu disparar o teste do overlay");
-      return;
+  async function sendAlertTest() {
+    try {
+      const result = await sendOverlayAlertTest({ data: { roomSlug: slug } });
+      const localSent = dispatchOverlayAlertTest(result.message);
+      toast.success(
+        localSent
+          ? "Teste enviado para o overlay e para a pre-visualizacao local."
+          : "Teste enviado para o overlay.",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel enviar o teste");
     }
-    toast.success("Teste enviado para o overlay. Deixe a URL do alerta aberta.");
   }
 
   return (
@@ -1316,8 +1350,10 @@ function OverlayBuilder({
                   </button>
                 </div>
               </div>
-              <div className="mt-2 break-all border border-dashed border-border bg-surface-2 p-2 font-mono text-[10px] text-neon">
-                {urlFor(w.key)}
+              <div className="mt-2 overflow-x-auto border border-dashed border-border bg-surface-2 p-2">
+                <div className="w-max min-w-full whitespace-nowrap font-mono text-[10px] text-neon">
+                  {urlFor(w.key)}
+                </div>
               </div>
             </div>
           ))}

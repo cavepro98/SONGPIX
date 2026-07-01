@@ -8,6 +8,38 @@ export type Database = {
   };
   public: {
     Tables: {
+      overlay_test_events: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: string;
+          payload: Json;
+          room_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind: string;
+          payload: Json;
+          room_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          payload?: Json;
+          room_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "overlay_test_events_room_id_fkey";
+            columns: ["room_id"];
+            isOneToOne: false;
+            referencedRelation: "rooms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       payments: {
         Row: {
           amount_cents: number;

@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { ListMusic, LogOut, Home, Menu, Wallet } from "lucide-react";
+import { ListMusic, LogOut, Home, Menu, Wallet, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import bgNoise from "@/assets/bg-noise.gif";
 
 type Room = { id: string; slug: string; name: string };
+const SUPPORT_WHATSAPP_URL = "https://wa.me/5598984723943";
 
 export function AppShell({
   active,
@@ -134,9 +135,17 @@ export function AppShell({
             </div>
           </div>
 
+          <a
+            href={SUPPORT_WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mx-3 mb-2 mt-auto flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+          >
+            <MessageCircle className="h-4 w-4" /> Suporte WhatsApp
+          </a>
           <button
             onClick={handleSignOut}
-            className="mx-3 mb-4 mt-auto flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+            className="mx-3 mb-4 flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
           >
             <LogOut className="h-4 w-4" /> Sair
           </button>
