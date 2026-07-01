@@ -493,12 +493,10 @@ function ViewerRoom() {
   );
   const topQueuedItems = queuedItems.filter((i) => i.is_top);
   const queue = queuedItems.filter((i) => !i.is_top);
-  const highestPaidCents = Math.max(
-    0,
-    ...items
-      .filter((i) => i.status === "queued" || i.status === "playing")
-      .map((i) => i.paid_amount_cents || 0),
-  );
+  const highestPaidItem =
+    [...items]
+      .filter((i) => (i.status === "queued" || i.status === "playing") && i.paid_amount_cents > 0)
+      .sort((a, b) => b.paid_amount_cents - a.paid_amount_cents)[0] ?? null;
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -578,15 +576,14 @@ function ViewerRoom() {
                       Donate da live
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Escolha quanto quer apoiar via PIX a partir de{" "}
-                      {formatCents(room.min_boost_cents)}
-                      {room.max_boost_cents ? ` até ${formatCents(room.max_boost_cents)}` : ""} e
-                      peça sua música. Após confirmar, ela entra automaticamente na fila.
+                      Faça um donate a partir de {formatCents(room.min_boost_cents)} e peça sua
+                      música. Confirmou o PIX, ela entra automaticamente na fila.
                     </p>
-                    {highestPaidCents > 0 && (
+                    {highestPaidItem && (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Se quiser aumentar sua prioridade, envie um valor acima do maior fura fila
-                        atual ({formatCents(highestPaidCents)}). Isso é opcional.
+                        {highestPaidItem.submitter_name} fez o maior donate da sala:{" "}
+                        {formatCents(highestPaidItem.paid_amount_cents)}. Quer ficar na frente?
+                        Faça um donate acima desse valor.
                       </p>
                     )}
                   </div>
@@ -1038,16 +1035,13 @@ function ViewerRoom() {
                               Furar a Fila
                             </button>
                             <span className="ml-auto font-mono text-[10px] uppercase text-muted-foreground">
-                              {formatCents(room.min_boost_cents)}
-                              {room.max_boost_cents
-                                ? ` – ${formatCents(room.max_boost_cents)}`
-                                : ""}
+                              mín. {formatCents(room.min_boost_cents)}
                             </span>
-                            {highestPaidCents > 0 && (
+                            {highestPaidItem && (
                               <p className="basis-full text-[11px] leading-relaxed text-muted-foreground">
-                                Dica: para aumentar sua prioridade, pague acima do maior fura fila
-                                atual ({formatCents(highestPaidCents)}). Não é obrigatório;
-                                qualquer valor dentro do limite já apoia e melhora sua posição.
+                                {highestPaidItem.submitter_name} fez o maior donate da sala:{" "}
+                                {formatCents(highestPaidItem.paid_amount_cents)}. Para ficar na
+                                frente, faça um donate acima desse valor.
                               </p>
                             )}
                           </div>
