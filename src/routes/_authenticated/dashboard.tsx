@@ -256,7 +256,7 @@ function Dashboard() {
     }
     if (cents < boostLimits.minBoostGlobalCents) {
       toast.error(
-        `Fura fila mínimo permitido pelo admin: ${formatCents(boostLimits.minBoostGlobalCents)}`,
+        `Fura fila mínimo da plataforma: ${formatCents(boostLimits.minBoostGlobalCents)}`,
       );
       return;
     }
@@ -272,7 +272,7 @@ function Dashboard() {
     }
     if (maxCents > boostLimits.maxBoostGlobalCents) {
       toast.error(
-        `Fura fila máximo permitido pelo admin: ${formatCents(boostLimits.maxBoostGlobalCents)}`,
+        `Fura fila máximo da plataforma: ${formatCents(boostLimits.maxBoostGlobalCents)}`,
       );
       return;
     }
@@ -916,7 +916,7 @@ function Dashboard() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                O admin permite valores entre {formatCents(boostLimits.minBoostGlobalCents)} e{" "}
+                Valores aceitos entre {formatCents(boostLimits.minBoostGlobalCents)} e{" "}
                 {formatCents(boostLimits.maxBoostGlobalCents)}.
               </p>
             </fieldset>
