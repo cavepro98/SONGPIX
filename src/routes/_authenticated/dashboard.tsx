@@ -370,15 +370,12 @@ function Dashboard() {
     if (!deleteId) return;
     const id = deleteId;
     setDeleteId(null);
-    const { error } = await supabase
-      .from("rooms")
-      .update({ archived_at: new Date().toISOString(), is_open: false })
-      .eq("id", id);
+    const { error } = await supabase.from("rooms").delete().eq("id", id);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Sala arquivada");
+    toast.success("Sala excluída");
     setRooms((prev) => prev.filter((r) => r.id !== id));
   }
 
@@ -1034,7 +1031,7 @@ function Dashboard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover playlist?</AlertDialogTitle>
             <AlertDialogDescription>
-              A sala sairá do painel e do link público, mas vendas e histórico financeiro serão
+              A sala e as músicas serão apagadas. As vendas e o histórico financeiro continuarão
               preservados.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1044,7 +1041,7 @@ function Dashboard() {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Arquivar
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

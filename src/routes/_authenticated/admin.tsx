@@ -401,16 +401,13 @@ function AdminPage() {
   async function deleteRoom(room: Room) {
     if (
       !confirm(
-        `Arquivar a sala "${room.name}"? Ela sairá do app, mas vendas e estatísticas financeiras serão preservadas.`,
+        `Excluir a sala "${room.name}"? A sala e as músicas serão apagadas, mas vendas e estatísticas financeiras serão preservadas.`,
       )
     )
       return;
-    const { error } = await supabase
-      .from("rooms")
-      .update({ archived_at: new Date().toISOString(), is_open: false })
-      .eq("id", room.id);
+    const { error } = await supabase.from("rooms").delete().eq("id", room.id);
     if (error) return toast.error(error.message);
-    toast.success("Sala arquivada");
+    toast.success("Sala excluída");
     loadAll();
   }
 
