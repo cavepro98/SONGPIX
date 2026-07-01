@@ -272,6 +272,7 @@ export type Database = {
           min_boost_cents: number;
           name: string;
           owner_id: string;
+          require_payment: boolean;
           slug: string;
           total_commission_cents: number;
           total_gross_cents: number;
@@ -292,6 +293,7 @@ export type Database = {
           min_boost_cents?: number;
           name: string;
           owner_id: string;
+          require_payment?: boolean;
           slug: string;
           total_commission_cents?: number;
           total_gross_cents?: number;
@@ -312,6 +314,7 @@ export type Database = {
           min_boost_cents?: number;
           name?: string;
           owner_id?: string;
+          require_payment?: boolean;
           slug?: string;
           total_commission_cents?: number;
           total_gross_cents?: number;

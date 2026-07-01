@@ -35,6 +35,7 @@ type Room = {
   min_boost_cents: number;
   max_boost_cents: number;
   allow_upload: boolean;
+  require_payment: boolean;
 };
 
 type QueueItem = {
@@ -75,7 +76,11 @@ function ViewerRoom() {
   const submit = useServerFn(submitTrack);
   const submitUpload = useServerFn(submitUploadedTrack);
   const [pixOpen, setPixOpen] = useState(false);
-  const [pixTarget, setPixTarget] = useState<{ itemId: string; amountCents: number } | null>(null);
+  const [pixTarget, setPixTarget] = useState<{
+    itemId?: string;
+    amountCents: number;
+    song?: { url: string; title: string; artist?: string; thumbnailUrl?: string };
+  } | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const coverUrl = useCoverUrl(room?.cover_url ?? null);
   const [items, setItems] = useState<QueueItem[]>([]);
@@ -102,7 +107,7 @@ function ViewerRoom() {
       const { data: r } = await supabase
         .from("rooms")
         .select(
-          "id, slug, name, description, cover_url, is_open, min_boost_cents, max_boost_cents, allow_upload",
+          "id, slug, name, description, cover_url, is_open, min_boost_cents, max_boost_cents, allow_upload, require_payment",
         )
         .eq("slug", slug)
         .maybeSingle();
@@ -215,6 +220,12 @@ function ViewerRoom() {
     };
   }, [room]);
 
+  useEffect(() => {
+    if (room?.require_payment && mode === "upload") {
+      setMode("link");
+    }
+  }, [mode, room?.require_payment]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!room) return;
@@ -298,6 +309,15 @@ function ViewerRoom() {
         toast.success("Música enviada pro dono da live!");
       } else {
         if (!url.trim()) throw new Error("Cole o link da música");
+        if (room.require_payment) {
+          setPixTarget({
+            amountCents: room.min_boost_cents,
+            song: { url: url.trim(), title: "Pedido pago" },
+          });
+          setPixOpen(true);
+          localStorage.setItem("songpix_name", cleanName);
+          return;
+        }
         await submit({ data: { roomSlug: room.slug, url: url.trim(), submitterName: cleanName } });
         setUrl("");
         toast.success("Música enviada!");
@@ -425,9 +445,22 @@ function ViewerRoom() {
                   <h2 className="font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Pedir Música
                   </h2>
-                  <span className="font-mono text-[10px] text-muted-foreground">INPUT_01</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {room.require_payment ? "PIX_REQUIRED" : "INPUT_01"}
+                  </span>
                 </div>
-                {room.allow_upload && (
+                {room.require_payment && (
+                  <div className="mb-3 border border-neon/40 bg-neon/[0.08] p-3">
+                    <div className="font-display text-xs font-bold uppercase tracking-widest text-neon">
+                      Apenas músicas pagas entram nesta sala
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      O pedido abre um PIX de {formatCents(room.min_boost_cents)} e a música entra
+                      automaticamente após a confirmação.
+                    </p>
+                  </div>
+                )}
+                {room.allow_upload && !room.require_payment && (
                   <div className="mb-3 inline-flex border border-border">
                     <button
                       type="button"
@@ -546,7 +579,15 @@ function ViewerRoom() {
                         </>
                       ) : (
                         <>
-                          <Plus className="h-4 w-4" /> Enviar
+                          {room.require_payment ? (
+                            <>
+                              <Zap className="h-4 w-4" /> Pagar e enviar
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4" /> Enviar
+                            </>
+                          )}
                         </>
                       )}
                     </button>
@@ -1045,6 +1086,11 @@ function ViewerRoom() {
           amountCents={pixTarget.amountCents}
           payerName={name || "Anônimo"}
           existingItemId={pixTarget.itemId}
+          song={pixTarget.song}
+          onApproved={() => {
+            setUrl("");
+            setPixTarget(null);
+          }}
         />
       )}
     </div>

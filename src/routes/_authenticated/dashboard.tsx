@@ -94,6 +94,7 @@ function Dashboard() {
   const [allowSpotify, setAllowSpotify] = useState(true);
   const [allowSoundcloud, setAllowSoundcloud] = useState(true);
   const [allowUpload, setAllowUpload] = useState(false);
+  const [requirePayment, setRequirePayment] = useState(false);
 
   async function load() {
     const { data: userData } = await supabase.auth.getUser();
@@ -150,6 +151,7 @@ function Dashboard() {
     setAllowSpotify(true);
     setAllowSoundcloud(true);
     setAllowUpload(false);
+    setRequirePayment(false);
     setEditId(null);
   }
 
@@ -157,7 +159,7 @@ function Dashboard() {
     const { data, error } = await supabase
       .from("rooms")
       .select(
-        "id, name, description, cover_url, min_boost_cents, max_boost_cents, max_duration_sec, allow_youtube, allow_spotify, allow_soundcloud, allow_upload",
+        "id, name, description, cover_url, min_boost_cents, max_boost_cents, max_duration_sec, allow_youtube, allow_spotify, allow_soundcloud, allow_upload, require_payment",
       )
       .eq("id", roomId)
       .maybeSingle();
@@ -179,6 +181,7 @@ function Dashboard() {
     setAllowSpotify(!!data.allow_spotify);
     setAllowSoundcloud(!!data.allow_soundcloud);
     setAllowUpload(!!data.allow_upload);
+    setRequirePayment(!!data.require_payment);
     setOpen(true);
   }
 
@@ -236,6 +239,7 @@ function Dashboard() {
         allow_spotify: allowSpotify,
         allow_soundcloud: allowSoundcloud,
         allow_upload: allowUpload,
+        require_payment: requirePayment,
         max_duration_sec: maxDurSec,
       };
 
@@ -709,7 +713,7 @@ function Dashboard() {
           if (!v) resetForm();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto bg-surface border-border sm:max-w-lg">
+        <DialogContent className="bg-surface border-border sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display text-xl font-bold italic uppercase tracking-tighter">
               {editId ? "Editar playlist" : "Nova playlist"}
@@ -720,14 +724,33 @@ function Dashboard() {
                 : "Configure o nome, capa, descrição, preço do fura fila e as fontes aceitas."}
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-2 border border-neon/30 bg-neon/[0.06] p-3 sm:grid-cols-3">
+            {[
+              ["01", "Identidade", "Nome, capa e descrição da sala."],
+              ["02", "Monetização", "Valores e modo pago obrigatório."],
+              ["03", "Fontes", "Links e upload aceitos pelo público."],
+            ].map(([n, title, desc]) => (
+              <div key={n} className="border border-border/70 bg-background/50 p-3">
+                <div className="font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
+                  etapa {n}
+                </div>
+                <div className="mt-1 font-display text-xs font-bold uppercase tracking-widest">
+                  {title}
+                </div>
+                <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {desc}
+                </div>
+              </div>
+            ))}
+          </div>
           <form onSubmit={handleCreate} className="space-y-5">
             {/* 📝 Informações Básicas */}
-            <fieldset className="space-y-3 border border-border bg-background/40 p-3">
+            <fieldset className="space-y-4 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 📝 Informações básicas
               </legend>
 
-              <div className="flex items-start gap-3">
+              <div className="grid gap-4 sm:grid-cols-[104px_minmax(0,1fr)]">
                 <label className="group relative grid h-20 w-20 shrink-0 cursor-pointer place-items-center overflow-hidden border border-dashed border-border bg-surface-2 hover:border-neon">
                   {coverPreview ? (
                     <>
@@ -798,7 +821,7 @@ function Dashboard() {
               </div>
             </fieldset>
 
-            <fieldset className="space-y-3 border border-border bg-background/40 p-3">
+            <fieldset className="space-y-3 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 ⚡ Fura fila
               </legend>
@@ -835,7 +858,45 @@ function Dashboard() {
               </p>
             </fieldset>
 
-            <fieldset className="space-y-2 border border-border bg-background/40 p-3">
+            <fieldset className="space-y-3 border border-neon/30 bg-neon/[0.05] p-4">
+              <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-neon">
+                🔒 Modo de entrada
+              </legend>
+              <button
+                type="button"
+                onClick={() => setRequirePayment((v) => !v)}
+                className={`flex w-full items-start gap-3 border p-3 text-left transition ${
+                  requirePayment
+                    ? "border-neon bg-neon text-neon-foreground"
+                    : "border-border bg-background/50 text-foreground hover:border-neon/60"
+                }`}
+              >
+                <span
+                  className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center border text-[10px] font-black ${
+                    requirePayment
+                      ? "border-neon-foreground bg-neon-foreground text-neon"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {requirePayment ? "✓" : ""}
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-display text-sm font-bold uppercase tracking-widest">
+                    Apenas músicas pagas entram na fila
+                  </span>
+                  <span
+                    className={`mt-1 block text-xs leading-relaxed ${
+                      requirePayment ? "text-neon-foreground/75" : "text-muted-foreground"
+                    }`}
+                  >
+                    Quando ativo, o público precisa pagar o fura fila mínimo para enviar uma música.
+                    Pedidos grátis ficam bloqueados.
+                  </span>
+                </span>
+              </button>
+            </fieldset>
+
+            <fieldset className="space-y-2 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 ⏱ Duração máxima por música
               </legend>
@@ -856,7 +917,7 @@ function Dashboard() {
               </p>
             </fieldset>
 
-            <fieldset className="space-y-2 border border-border bg-background/40 p-3">
+            <fieldset className="space-y-2 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 🎧 Fontes aceitas
               </legend>

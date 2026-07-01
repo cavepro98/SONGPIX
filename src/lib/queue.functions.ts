@@ -152,12 +152,15 @@ export const submitTrack = createServerFn({ method: "POST" })
 
     const { data: room, error: roomErr } = await supabaseAdmin
       .from("rooms")
-      .select("id, is_open, allow_youtube, allow_spotify, allow_soundcloud, max_duration_sec")
+      .select(
+        "id, is_open, allow_youtube, allow_spotify, allow_soundcloud, max_duration_sec, require_payment",
+      )
       .eq("slug", data.roomSlug)
       .maybeSingle();
     if (roomErr) throw new Error(roomErr.message);
     if (!room) throw new Error("Sala não encontrada");
     if (!room.is_open) throw new Error("A fila está fechada");
+    if (room.require_payment) throw new Error("Esta sala aceita apenas músicas pagas");
     if (source === "youtube" && !room.allow_youtube)
       throw new Error("YouTube não permitido nesta sala");
     if (source === "spotify" && !room.allow_spotify)
@@ -214,12 +217,13 @@ export const submitUploadedTrack = createServerFn({ method: "POST" })
 
     const { data: room, error: roomErr } = await supabaseAdmin
       .from("rooms")
-      .select("id, is_open, allow_upload")
+      .select("id, is_open, allow_upload, require_payment")
       .eq("slug", data.roomSlug)
       .maybeSingle();
     if (roomErr) throw new Error(roomErr.message);
     if (!room) throw new Error("Sala não encontrada");
     if (!room.is_open) throw new Error("A fila está fechada");
+    if (room.require_payment) throw new Error("Esta sala aceita apenas músicas pagas");
     if (!room.allow_upload) throw new Error("Esta sala não aceita upload de arquivo");
 
     // Validate content type and extension
