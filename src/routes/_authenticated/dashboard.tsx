@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getMyEarnings } from "@/lib/withdrawals.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Minhas salas | SongPIX" }] }),
@@ -72,7 +74,9 @@ function slugify(s: string) {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const fetchEarnings = useServerFn(getMyEarnings);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [availableCents, setAvailableCents] = useState(0);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -101,16 +105,27 @@ function Dashboard() {
     const uid = userData.user?.id;
     if (!uid) {
       setRooms([]);
+      setAvailableCents(0);
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase
-      .from("rooms")
-      .select("id, slug, name, is_open, created_at, cover_url, total_net_cents, total_gross_cents")
-      .eq("owner_id", uid)
-      .order("created_at", { ascending: false });
+    const [roomResult, earnings] = await Promise.all([
+      supabase
+        .from("rooms")
+        .select(
+          "id, slug, name, is_open, created_at, cover_url, total_net_cents, total_gross_cents",
+        )
+        .eq("owner_id", uid)
+        .order("created_at", { ascending: false }),
+      fetchEarnings().catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Erro ao carregar saldo");
+        return null;
+      }),
+    ]);
+    const { data, error } = roomResult;
     if (error) toast.error(error.message);
     else setRooms((data ?? []) as Room[]);
+    setAvailableCents(Number(earnings?.availableCents ?? 0));
     setLoading(false);
   }
 
@@ -486,8 +501,7 @@ function Dashboard() {
 
             {/* Stats strip */}
             {(() => {
-              const netTotal = rooms.reduce((s, r) => s + Number(r.total_net_cents ?? 0), 0);
-              const netFmt = (netTotal / 100).toLocaleString("pt-BR", {
+              const availableFmt = (availableCents / 100).toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               });
@@ -518,15 +532,15 @@ function Dashboard() {
                   >
                     <div className="flex items-center justify-between font-mono text-[10px] font-bold uppercase tracking-widest text-neon-foreground/80">
                       <span className="flex items-center gap-1.5">
-                        <Wallet className="h-3 w-3" /> Ganhos líquidos
+                        <Wallet className="h-3 w-3" /> Disponível para saque
                       </span>
                       <span className="opacity-70">ver saques →</span>
                     </div>
                     <div className="mt-2 font-display text-3xl font-bold italic uppercase tabular-nums leading-none tracking-tighter text-neon-foreground">
-                      {netFmt}
+                      {availableFmt}
                     </div>
                     <div className="mt-1 font-mono text-[10px] text-neon-foreground/70">
-                      Total recebido em todas as salas
+                      Já desconta saques pendentes, aprovados e pagos
                     </div>
                   </Link>
                 </div>
