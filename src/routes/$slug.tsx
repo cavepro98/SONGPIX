@@ -80,6 +80,19 @@ function formatCents(c: number) {
   return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function formatInputCents(cents: number) {
+  return (cents / 100).toFixed(2).replace(".", ",");
+}
+
+function parseCurrencyCents(value: string) {
+  const clean = value.replace(/[^\d,.]/g, "").trim();
+  if (!clean) return 0;
+  const normalized = clean.includes(",") ? clean.replace(/\./g, "").replace(",", ".") : clean;
+  const amount = Number.parseFloat(normalized);
+  if (!Number.isFinite(amount)) return 0;
+  return Math.round(amount * 100);
+}
+
 const DEFAULT_BOOST_LIMITS: BoostLimits = {
   minBoostGlobalCents: 100,
   maxBoostGlobalCents: 1_000_000,
@@ -139,6 +152,7 @@ function ViewerRoom() {
   const [submitting, setSubmitting] = useState(false);
   const [boostOpen, setBoostOpen] = useState<string | null>(null);
   const [boostAmount, setBoostAmount] = useState("");
+  const [requestAmount, setRequestAmount] = useState("");
   const [mode, setMode] = useState<"link" | "upload">("link");
   const [file, setFile] = useState<File | null>(null);
   const [trackTitle, setTrackTitle] = useState("");
@@ -149,6 +163,12 @@ function ViewerRoom() {
     const saved = typeof window !== "undefined" ? localStorage.getItem("songpix_name") : "";
     if (saved) setName(saved);
   }, []);
+
+  useEffect(() => {
+    if (room?.require_payment) {
+      setRequestAmount((current) => current || formatInputCents(room.min_boost_cents));
+    }
+  }, [room?.id, room?.require_payment, room?.min_boost_cents]);
 
   useEffect(() => {
     let mounted = true;
@@ -302,6 +322,16 @@ function ViewerRoom() {
     setName(cleanName);
     setSubmitting(true);
     try {
+      const paidRequestCents = room.require_payment ? parseCurrencyCents(requestAmount) : 0;
+      if (room.require_payment) {
+        if (!paidRequestCents || paidRequestCents <= 0) throw new Error("Informe o valor do apoio");
+        if (paidRequestCents < room.min_boost_cents) {
+          throw new Error(`Mínimo: ${formatCents(room.min_boost_cents)}`);
+        }
+        if (room.max_boost_cents && paidRequestCents > room.max_boost_cents) {
+          throw new Error(`Máximo: ${formatCents(room.max_boost_cents)}`);
+        }
+      }
       if (mode === "upload") {
         if (!file) throw new Error("Selecione um arquivo de áudio");
         if (!trackTitle.trim()) throw new Error("Coloque o nome da música");
@@ -371,7 +401,7 @@ function ViewerRoom() {
         if (uploadErr) throw new Error(uploadErr.message);
         if (room.require_payment) {
           setPixTarget({
-            amountCents: room.min_boost_cents,
+            amountCents: paidRequestCents,
             song: {
               url: uploadTicket.path,
               title: uploadTicket.title,
@@ -397,7 +427,7 @@ function ViewerRoom() {
         if (!url.trim()) throw new Error("Cole o link da música");
         if (room.require_payment) {
           setPixTarget({
-            amountCents: room.min_boost_cents,
+            amountCents: paidRequestCents,
             song: { url: url.trim(), title: "Pedido pago" },
           });
           setPixOpen(true);
@@ -418,9 +448,8 @@ function ViewerRoom() {
 
   function handleBoost(itemId: string) {
     if (!room) return;
-    const reais = parseFloat(boostAmount.replace(",", "."));
-    if (!reais || reais <= 0) return toast.error("Valor inválido");
-    const cents = Math.round(reais * 100);
+    const cents = parseCurrencyCents(boostAmount);
+    if (!cents || cents <= 0) return toast.error("Valor inválido");
     if (cents < room.min_boost_cents) {
       return toast.error(`Mínimo: ${formatCents(room.min_boost_cents)}`);
     }
@@ -549,8 +578,10 @@ function ViewerRoom() {
                       Donate da live
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Envie um apoio via PIX a partir de {formatCents(room.min_boost_cents)} e
-                      peça sua música. Assim que confirmar, ela entra automaticamente na fila.
+                      Escolha quanto quer apoiar via PIX a partir de{" "}
+                      {formatCents(room.min_boost_cents)}
+                      {room.max_boost_cents ? ` até ${formatCents(room.max_boost_cents)}` : ""} e
+                      peça sua música. Após confirmar, ela entra automaticamente na fila.
                     </p>
                     {highestPaidCents > 0 && (
                       <p className="mt-2 text-xs text-muted-foreground">
@@ -604,6 +635,21 @@ function ViewerRoom() {
                         maxLength={120}
                         className="border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
                       />
+                      {room.require_payment && (
+                        <div className="grid gap-1">
+                          <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Valor do apoio
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder={formatInputCents(room.min_boost_cents)}
+                            value={requestAmount}
+                            onChange={(e) => setRequestAmount(e.target.value)}
+                            className="border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-neon"
+                          />
+                        </div>
+                      )}
                       <label className="inline-flex cursor-pointer items-center gap-2 border border-dashed border-border bg-background px-3 py-2 text-xs text-muted-foreground hover:border-neon hover:text-neon">
                         <Upload className="h-4 w-4" />
                         <span className="truncate">
@@ -663,7 +709,13 @@ function ViewerRoom() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid gap-2 sm:grid-cols-[140px_1fr_auto]">
+                  <div
+                    className={`grid gap-2 ${
+                      room.require_payment
+                        ? "sm:grid-cols-[140px_1fr_140px_auto]"
+                        : "sm:grid-cols-[140px_1fr_auto]"
+                    }`}
+                  >
                     <input
                       type="text"
                       placeholder="@seuusuario"
@@ -682,6 +734,17 @@ function ViewerRoom() {
                       onChange={(e) => setUrl(e.target.value)}
                       className="border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
                     />
+                    {room.require_payment && (
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={formatInputCents(room.min_boost_cents)}
+                        value={requestAmount}
+                        onChange={(e) => setRequestAmount(e.target.value)}
+                        aria-label="Valor do apoio"
+                        className="border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-neon"
+                      />
+                    )}
                     <button
                       type="submit"
                       disabled={submitting}
