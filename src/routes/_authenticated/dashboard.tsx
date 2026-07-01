@@ -18,6 +18,7 @@ import {
   Wallet,
   Pencil,
   MessageCircle,
+  Zap,
 } from "lucide-react";
 import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
