@@ -527,13 +527,14 @@ function ViewerRoom() {
                       Apenas músicas pagas entram nesta sala
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      O pedido abre um PIX de {formatCents(room.min_boost_cents)} e a música entra
-                      automaticamente após a confirmação.
+                      Para enviar sua música, confirme um PIX a partir de{" "}
+                      {formatCents(room.min_boost_cents)}. Depois da confirmação, ela entra na fila
+                      automaticamente.
                     </p>
                     {highestPaidCents > 0 && (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Dica: se quiser ficar em primeiro, o valor precisa ser maior que o maior
-                        fura fila atual ({formatCents(highestPaidCents)}). Isso não é obrigatório.
+                        Se quiser disputar o primeiro lugar, envie um valor acima do maior fura fila
+                        atual ({formatCents(highestPaidCents)}). Isso é opcional.
                       </p>
                     )}
                   </div>
