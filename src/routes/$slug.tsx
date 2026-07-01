@@ -71,6 +71,19 @@ function formatCents(c: number) {
   return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function normalizeUserHandle(value: string) {
+  const clean = value
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/^@+/, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .toLowerCase()
+    .slice(0, 29);
+
+  return clean ? `@${clean}` : "";
+}
+
 function ViewerRoom() {
   const { slug } = Route.useParams();
   const submit = useServerFn(submitTrack);
@@ -229,8 +242,9 @@ function ViewerRoom() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!room) return;
-    const cleanName = name.trim();
-    if (!cleanName) return toast.error("Coloque um apelido");
+    const cleanName = normalizeUserHandle(name);
+    if (!cleanName) return toast.error("Informe seu @ de usuário");
+    setName(cleanName);
     setSubmitting(true);
     try {
       if (mode === "upload") {
@@ -341,7 +355,9 @@ function ViewerRoom() {
     if (room.max_boost_cents && cents > room.max_boost_cents) {
       return toast.error(`Máximo: ${formatCents(room.max_boost_cents)}`);
     }
-    if (!name.trim()) return toast.error("Informe seu nome primeiro");
+    const cleanName = normalizeUserHandle(name);
+    if (!cleanName) return toast.error("Informe seu @ primeiro");
+    setName(cleanName);
     setPixTarget({ itemId, amountCents: cents });
     setPixOpen(true);
     setBoostOpen(null);
@@ -486,11 +502,14 @@ function ViewerRoom() {
                   <div className="grid gap-2 sm:grid-cols-[140px_1fr_auto]">
                     <input
                       type="text"
-                      placeholder="Apelido"
+                      placeholder="@seuusuario"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      maxLength={30}
-                      className="border border-border bg-background px-3 py-2 font-mono text-sm uppercase outline-none focus:border-neon"
+                      maxLength={32}
+                      inputMode="text"
+                      autoComplete="username"
+                      aria-label="@ do usuário"
+                      className="border border-border bg-background px-3 py-2 font-mono text-sm lowercase outline-none focus:border-neon"
                     />
                     <div className="grid gap-2">
                       <input
@@ -555,11 +574,14 @@ function ViewerRoom() {
                   <div className="grid gap-2 sm:grid-cols-[140px_1fr_auto]">
                     <input
                       type="text"
-                      placeholder="Apelido"
+                      placeholder="@seuusuario"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      maxLength={30}
-                      className="border border-border bg-background px-3 py-2 font-mono text-sm uppercase outline-none focus:border-neon"
+                      maxLength={32}
+                      inputMode="text"
+                      autoComplete="username"
+                      aria-label="@ do usuário"
+                      className="border border-border bg-background px-3 py-2 font-mono text-sm lowercase outline-none focus:border-neon"
                     />
                     <input
                       type="url"
@@ -1084,7 +1106,7 @@ function ViewerRoom() {
           onClose={() => setPixOpen(false)}
           roomSlug={room.slug}
           amountCents={pixTarget.amountCents}
-          payerName={name || "Anônimo"}
+          payerName={normalizeUserHandle(name) || "Anônimo"}
           existingItemId={pixTarget.itemId}
           song={pixTarget.song}
           onApproved={() => {
