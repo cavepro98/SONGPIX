@@ -7,6 +7,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  BellRing,
   Check,
   Copy,
   ExternalLink,
@@ -27,6 +28,7 @@ import { useCoverUrl } from "@/lib/use-cover-url";
 import { SourceBadge } from "@/components/SourceBadge";
 import { Marquee } from "@/components/Marquee";
 import { useAnimatedSwap } from "@/hooks/use-animated-swap";
+import { dispatchOverlayAlertTest, makeOverlayAlertTestMessage } from "@/lib/overlay-alert-test";
 import { listRoomPayments } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_authenticated/rooms/$slug")({
@@ -1143,13 +1145,19 @@ function RoomPanel() {
           </section>
         )}
       </main>
-      {overlayOpen && <OverlayBuilder slug={slug} onClose={() => setOverlayOpen(false)} />}
+      {overlayOpen && (
+        <OverlayBuilder
+          slug={slug}
+          roomName={room?.name ?? null}
+          onClose={() => setOverlayOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
 type OverlayWidget = {
-  key: "now" | "music" | "request" | "boosts" | "supporter" | "alert";
+  key: "now" | "music" | "request" | "request-qr" | "boosts" | "supporter" | "alert";
   label: string;
   desc: string;
   size: string;
@@ -1175,9 +1183,15 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
   },
   {
     key: "request",
-    label: "Pedir música (QR)",
-    desc: "QR Code + link público da sala.",
-    size: "360 × 480",
+    label: "Peça sua música grátis",
+    desc: "Versão compacta só com a URL pública, sem QR Code.",
+    size: "520 × 180",
+  },
+  {
+    key: "request-qr",
+    label: "Peça sua música grátis + QR",
+    desc: "Versão compacta com QR Code e link público da sala.",
+    size: "420 × 220",
   },
   { key: "boosts", label: "Top boosts", desc: "Top 5 apoios por valor.", size: "360 × 480" },
   {
@@ -1188,7 +1202,15 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
   },
 ];
 
-function OverlayBuilder({ slug, onClose }: { slug: string; onClose: () => void }) {
+function OverlayBuilder({
+  slug,
+  roomName,
+  onClose,
+}: {
+  slug: string;
+  roomName: string | null;
+  onClose: () => void;
+}) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const [transparent, setTransparent] = useState(true);
 
@@ -1200,6 +1222,15 @@ function OverlayBuilder({ slug, onClose }: { slug: string; onClose: () => void }
   function copyOne(key: string) {
     navigator.clipboard.writeText(urlFor(key));
     toast.success("URL copiada — cola no OBS ou TikTok Studio como Browser Source");
+  }
+
+  function sendAlertTest() {
+    const sent = dispatchOverlayAlertTest(makeOverlayAlertTestMessage(slug, roomName ?? undefined));
+    if (!sent) {
+      toast.error("Seu navegador não conseguiu disparar o teste do overlay");
+      return;
+    }
+    toast.success("Teste enviado para o overlay. Deixe a URL do alerta aberta.");
   }
 
   return (
@@ -1260,6 +1291,14 @@ function OverlayBuilder({ slug, onClose }: { slug: string; onClose: () => void }
                   <p className="mt-1 text-xs text-muted-foreground">{w.desc}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {w.key === "alert" && (
+                    <button
+                      onClick={sendAlertTest}
+                      className="inline-flex items-center gap-1 border border-border bg-background px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+                    >
+                      <BellRing className="h-3 w-3" /> Testar
+                    </button>
+                  )}
                   <a
                     href={urlFor(w.key)}
                     target="_blank"

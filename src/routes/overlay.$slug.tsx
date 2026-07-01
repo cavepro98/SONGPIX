@@ -6,6 +6,11 @@ import { Music, Zap, Heart, Star, Sparkles } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 import { Marquee } from "@/components/Marquee";
 import { useAnimatedSwap } from "@/hooks/use-animated-swap";
+import {
+  OVERLAY_ALERT_TEST_CHANNEL,
+  OVERLAY_ALERT_TEST_STORAGE_KEY,
+  type OverlayAlertTestMessage,
+} from "@/lib/overlay-alert-test";
 
 export const Route = createFileRoute("/overlay/$slug")({
   head: ({ params }) => ({
@@ -38,7 +43,7 @@ type QueueItem = {
   manual_order: number | null;
 };
 
-const ALL_WIDGETS = ["now", "music", "request", "boosts", "supporter", "alert"] as const;
+const ALL_WIDGETS = ["now", "music", "request", "request-qr", "boosts", "supporter", "alert"] as const;
 type WidgetKey = (typeof ALL_WIDGETS)[number];
 
 type AlertPayload = {
@@ -48,6 +53,9 @@ type AlertPayload = {
   amountCents: number;
   thumb: string | null;
 };
+
+const ALERT_DISPLAY_MS = 4200;
+const ALERT_EXIT_MS = 900;
 
 function sortQueue(items: QueueItem[]) {
   return [...items].sort((a, b) => {
@@ -187,13 +195,29 @@ function Overlay() {
   const widgetsKey = useMemo(() => ALL_WIDGETS.filter((w) => widgets.has(w)), [widgets]);
   const refWidth =
     widgetsKey.length === 1
-      ? ({ now: 480, music: 480, request: 360, supporter: 320, boosts: 360, alert: 560 } as const)[
+      ? ({
+          now: 480,
+          music: 480,
+          request: 520,
+          "request-qr": 420,
+          supporter: 320,
+          boosts: 360,
+          alert: 560,
+        } as const)[
           widgetsKey[0]!
         ]
       : 640;
   const refHeight =
     widgetsKey.length === 1
-      ? ({ now: 200, music: 720, request: 480, supporter: 360, boosts: 480, alert: 220 } as const)[
+      ? ({
+          now: 200,
+          music: 720,
+          request: 180,
+          "request-qr": 220,
+          supporter: 360,
+          boosts: 480,
+          alert: 220,
+        } as const)[
           widgetsKey[0]!
         ]
       : 1080;
@@ -219,6 +243,42 @@ function Overlay() {
   const seenPaidRef = useRef<Map<string, number>>(new Map());
   const initializedRef = useRef(false);
   const showAlert = widgets.has("alert");
+  const { displayed: displayedAlert, isLeaving: alertLeaving } = useAnimatedSwap(
+    activeAlert,
+    ALERT_EXIT_MS,
+  );
+
+  useEffect(() => {
+    if (!showAlert || typeof window === "undefined") return;
+
+    function enqueueTestAlert(message: OverlayAlertTestMessage) {
+      if (message.type !== "overlay-alert-test" || message.slug !== slug) return;
+      setAlertQueue((q) => [...q, message.alert]);
+    }
+
+    let channel: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) {
+      channel = new BroadcastChannel(OVERLAY_ALERT_TEST_CHANNEL);
+      channel.onmessage = (event: MessageEvent<OverlayAlertTestMessage>) => {
+        if (event.data) enqueueTestAlert(event.data);
+      };
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== OVERLAY_ALERT_TEST_STORAGE_KEY || !event.newValue) return;
+      try {
+        enqueueTestAlert(JSON.parse(event.newValue) as OverlayAlertTestMessage);
+      } catch {
+        // ignore malformed storage events
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      channel?.close();
+    };
+  }, [showAlert, slug]);
 
   useEffect(() => {
     const seen = seenPaidRef.current;
@@ -246,14 +306,18 @@ function Overlay() {
   }, [items, showAlert]);
 
   useEffect(() => {
-    if (activeAlert || alertQueue.length === 0) return;
+    if (activeAlert || alertLeaving || alertQueue.length === 0) return;
     const next = alertQueue[0]!;
     setActiveAlert(next);
     setAlertQueue((q) => q.slice(1));
     playSupporterChime(next.amountCents);
-    const t = setTimeout(() => setActiveAlert(null), 3000);
+  }, [activeAlert, alertLeaving, alertQueue]);
+
+  useEffect(() => {
+    if (!activeAlert) return;
+    const t = window.setTimeout(() => setActiveAlert(null), ALERT_DISPLAY_MS);
     return () => clearTimeout(t);
-  }, [alertQueue, activeAlert]);
+  }, [activeAlert]);
 
   if (!room) {
     return <div className="min-h-screen bg-transparent" />;
@@ -273,8 +337,12 @@ function Overlay() {
       .filter((i) => i.paid_amount_cents > 0)
       .sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
 
-  const publicUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/${slug}` : `/${slug}`;
+  const publicOrigin =
+    typeof window !== "undefined"
+      ? window.location.origin.replace("://www.", "://")
+      : "";
+  const publicUrl = publicOrigin ? `${publicOrigin}/${slug}` : `/${slug}`;
+  const publicUrlLabel = publicUrl.replace(/^https?:\/\//, "");
 
   return (
     <div
@@ -465,19 +533,48 @@ function Overlay() {
           )}
 
           {show("request") && (
-            <WidgetCard label="Pedir música" icon={<Zap className="h-3 w-3" />}>
-              <div className="flex items-center gap-3">
-                <div className="bg-white p-2">
-                  <QRCodeSVG value={publicUrl} size={88} level="M" />
+            <WidgetCard label="Peça sua música grátis" icon={<Zap className="h-3 w-3" />}>
+              <div className="relative overflow-hidden border border-neon/30 bg-neon/[0.06] p-4">
+                <div className="absolute right-0 top-0 border-l border-b border-neon/30 bg-neon px-2 py-1 font-display text-[9px] font-black uppercase tracking-[0.2em] text-neon-foreground">
+                  ao vivo
                 </div>
-                <div className="min-w-0">
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Escaneia
+                <div className="pr-16">
+                  <div className="font-display text-2xl font-black italic uppercase leading-none tracking-tight text-foreground">
+                    Peça sua música grátis
                   </div>
-                  <div className="truncate font-display text-lg font-black uppercase">
+                  <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                    link direto da sala
+                  </div>
+                  <div className="mt-3 truncate font-display text-lg font-bold uppercase text-neon">
                     {room.slug}
                   </div>
-                  <div className="truncate font-mono text-[11px] text-neon">{publicUrl}</div>
+                  <div className="mt-1 truncate font-mono text-[11px] text-neon">
+                    {publicUrlLabel}
+                  </div>
+                </div>
+              </div>
+            </WidgetCard>
+          )}
+
+          {show("request-qr") && (
+            <WidgetCard label="Peça sua música grátis + QR" icon={<Zap className="h-3 w-3" />}>
+              <div className="flex items-center gap-3 border border-neon/30 bg-neon/[0.06] p-3">
+                <div className="bg-white p-2">
+                  <QRCodeSVG value={publicUrl} size={78} level="M" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-display text-lg font-black italic uppercase leading-none tracking-tight text-foreground">
+                    Peça sua música grátis
+                  </div>
+                  <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                    escaneie ou digite
+                  </div>
+                  <div className="mt-2 truncate font-display text-base font-bold uppercase text-neon">
+                    {room.slug}
+                  </div>
+                  <div className="mt-1 truncate font-mono text-[11px] text-neon">
+                    {publicUrlLabel}
+                  </div>
                 </div>
               </div>
             </WidgetCard>
@@ -528,9 +625,9 @@ function Overlay() {
             </WidgetCard>
           )}
 
-          {show("alert") && activeAlert && (
+          {show("alert") && displayedAlert && (
             <div className="relative min-h-[180px]">
-              <SupporterAlertCard alert={activeAlert} />
+              <SupporterAlertCard alert={displayedAlert} leaving={alertLeaving} />
             </div>
           )}
         </div>
@@ -539,9 +636,15 @@ function Overlay() {
   );
 }
 
-function SupporterAlertCard({ alert }: { alert: AlertPayload }) {
+function SupporterAlertCard({ alert, leaving }: { alert: AlertPayload; leaving: boolean }) {
   return (
-    <div className="relative overflow-hidden border-2 border-neon bg-neon text-neon-foreground shadow-[0_0_60px_var(--neon)] animate-[alert-in_0.6s_cubic-bezier(0.22,1,0.36,1)_both]">
+    <div
+      className={`relative overflow-hidden border-2 border-neon bg-neon text-neon-foreground shadow-[0_0_60px_var(--neon)] [--marquee-fade:var(--neon)] ${
+        leaving
+          ? "animate-[soft-out_0.9s_cubic-bezier(0.4,0,0.2,1)_both]"
+          : "animate-[alert-in_0.6s_cubic-bezier(0.22,1,0.36,1)_both]"
+      }`}
+    >
       <div className="pointer-events-none absolute inset-0 opacity-50 [background:repeating-linear-gradient(45deg,transparent_0_10px,rgba(0,0,0,0.08)_10px_20px)] animate-[alert-stripes_1.2s_linear_infinite]" />
       <div className="relative flex items-center gap-4 p-4">
         <div className="grid h-20 w-20 shrink-0 place-items-center border-2 border-neon-foreground/40 bg-neon-foreground/10 animate-[alert-pop_0.9s_ease-out_both]">
@@ -556,10 +659,13 @@ function SupporterAlertCard({ alert }: { alert: AlertPayload }) {
             <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-neon-foreground align-middle" />
             Novo apoio
           </p>
-          <p className="font-display text-2xl font-extrabold italic uppercase leading-tight">
+          <Marquee
+            className="font-display text-2xl font-extrabold italic uppercase leading-tight tracking-tight"
+            speed={45}
+          >
             {alert.name}
-          </p>
-          <Marquee className="text-xs font-medium text-neon-foreground/80">
+          </Marquee>
+          <Marquee className="text-xs font-medium text-neon-foreground/80" speed={40}>
             apoiou: {alert.title}
           </Marquee>
         </div>

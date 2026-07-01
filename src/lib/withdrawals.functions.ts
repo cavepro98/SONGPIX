@@ -76,13 +76,21 @@ async function computeUserBalance(supabaseAdmin: any, userId: string) {
     .select("amount_cents, status")
     .eq("user_id", userId)
     .in("status", ["pending", "approved", "paid"]);
-  const lockedCents = (ws ?? []).reduce((s: number, w: any) => s + w.amount_cents, 0);
+  const processingCents = (ws ?? [])
+    .filter((w: any) => w.status === "pending" || w.status === "approved")
+    .reduce((s: number, w: any) => s + Number(w.amount_cents || 0), 0);
+  const paidOutCents = (ws ?? [])
+    .filter((w: any) => w.status === "paid")
+    .reduce((s: number, w: any) => s + Number(w.amount_cents || 0), 0);
+  const lockedCents = processingCents + paidOutCents;
 
   return {
     grossCents,
     commission,
     commissionCents,
     netCents,
+    processingCents,
+    paidOutCents,
     lockedCents,
     minWithdrawalCents,
     availableCents: Math.max(0, netCents - lockedCents),

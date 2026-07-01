@@ -187,14 +187,20 @@ function WithdrawalsPage() {
           </div>
           <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Sacado/em processo
+              Em processo
             </p>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums text-yellow-400">
-              {formatCents(data?.lockedCents ?? 0)}
+              {formatCents(data?.processingCents ?? 0)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Saques pendentes, aprovados ou pagos
-            </p>
+            <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+              <p>Saques pendentes ou aprovados</p>
+              <p>
+                Já sacado:{" "}
+                <span className="font-bold text-foreground">
+                  {formatCents(data?.paidOutCents ?? 0)}
+                </span>
+              </p>
+            </div>
           </div>
           <div className="rounded-xl border-2 border-neon bg-neon p-4 text-neon-foreground">
             <p className="text-[10px] font-mono uppercase tracking-widest text-neon-foreground/70">
