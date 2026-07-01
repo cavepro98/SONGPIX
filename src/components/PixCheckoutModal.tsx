@@ -158,9 +158,8 @@ export default function PixCheckoutModal(props: Props) {
         {!resp ? (
           <div className="space-y-3">
             <div className="rounded-md border border-neon/30 bg-neon/[0.06] p-3 text-xs leading-relaxed text-muted-foreground">
-              Dica: se já existe uma música paga na fila e você quer ficar em primeiro, escolha um
-              valor maior que o maior fura fila atual. Isso não é obrigatório; qualquer valor válido
-              já confirma o apoio.
+              Quanto maior o apoio, mais alta sua música fica na fila. Se quiser tentar o topo,
+              escolha um valor acima dos apoios atuais.
             </div>
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
