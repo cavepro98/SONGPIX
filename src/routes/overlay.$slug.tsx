@@ -659,9 +659,7 @@ function Overlay() {
           )}
 
           {show("alert") && displayedAlert && (
-            <div className="relative min-h-[136px] overflow-visible">
-              <SupporterAlertCard alert={displayedAlert} leaving={alertLeaving} />
-            </div>
+            <SupporterAlertCard alert={displayedAlert} leaving={alertLeaving} />
           )}
         </div>
       </div>
