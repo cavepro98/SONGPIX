@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { mpCreatePixPayment } from "@/lib/mercadopago.server";
-import { detectSource } from "@/lib/oembed";
+import { detectSource, isPlaylistUrl } from "@/lib/oembed";
 import { assertPublicAppAvailable } from "@/lib/app-config.server";
 import { publicJsonResponse, publicOptionsResponse } from "@/lib/cors.server";
 import { createPaymentStatusToken, enforceRateLimit } from "@/lib/security.server";
@@ -153,6 +153,13 @@ export const Route = createFileRoute("/api/public/payments/create")({
               if (!parsedUrl.success) return json(request, { error: "Link inválido" }, 400);
               const source = detectSource(parsedUrl.data);
               if (!source) return json(request, { error: "Fonte não suportada" }, 400);
+              if (isPlaylistUrl(parsedUrl.data)) {
+                return json(
+                  request,
+                  { error: "Playlist não é aceita. Envie o link de uma música." },
+                  400,
+                );
+              }
               if (source === "youtube" && !room.allow_youtube) {
                 return json(request, { error: "YouTube não permitido" }, 400);
               }

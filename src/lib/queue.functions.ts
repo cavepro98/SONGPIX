@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { detectSource, type TrackMetadata, type TrackSource } from "./oembed";
+import { detectSource, isPlaylistUrl, type TrackMetadata, type TrackSource } from "./oembed";
 import { assertPublicAppAvailable } from "./app-config.server";
 import { enforceRateLimit } from "./security.server";
 
@@ -127,8 +127,11 @@ export const submitTrack = createServerFn({ method: "POST" })
     await assertPublicAppAvailable();
     const source = detectSource(data.url);
     if (!source) throw new Error("Fonte não suportada. Use YouTube, Spotify ou SoundCloud.");
+    if (isPlaylistUrl(data.url)) throw new Error("Playlist não é aceita. Envie o link de uma música.");
     const normalizedUrl =
       source === "soundcloud" ? await resolveSoundcloudShortUrl(data.url) : data.url;
+    if (isPlaylistUrl(normalizedUrl))
+      throw new Error("Playlist não é aceita. Envie o link de uma música.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
