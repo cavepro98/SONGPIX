@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /withdrawals
+Disallow: /rooms/
+Disallow: /overlay/
+Disallow: /auth
+
+Sitemap: https://songpix.app/sitemap.xml
