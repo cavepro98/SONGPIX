@@ -10,51 +10,33 @@ const SubmitInput = z.object({
   submitterName: z.string().trim().min(1).max(40),
 });
 
-const UploadInput = z.object({
+const UploadTicketInput = z.object({
   roomSlug: z.string().min(1).max(64),
   fileName: z.string().min(1).max(200),
-  fileBase64: z.string().min(1),
   contentType: z.string().min(1).max(120),
   title: z.string().trim().min(1).max(120),
   submitterName: z.string().trim().min(1).max(40),
 });
 
-const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+const StorageUploadInput = z.object({
+  roomSlug: z.string().min(1).max(64),
+  storagePath: z.string().min(1).max(500),
+  title: z.string().trim().min(1).max(120),
+  submitterName: z.string().trim().min(1).max(40),
+});
 
-function looksLikeAudio(bytes: Buffer, ext: string, mime: string): boolean {
-  const ascii = (start: number, end: number) => bytes.subarray(start, end).toString("ascii");
-  const isMp3 =
-    ascii(0, 3) === "ID3" || (bytes.length > 1 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
-  const isWav = ascii(0, 4) === "RIFF" && ascii(8, 12) === "WAVE";
-  const isOgg = ascii(0, 4) === "OggS";
-  const isFlac = ascii(0, 4) === "fLaC";
-  const isAac = bytes.length > 1 && bytes[0] === 0xff && (bytes[1] & 0xf6) === 0xf0;
-  const boxType = ascii(4, 8);
-  const isMp4Family = boxType === "ftyp";
-  const isWebm =
-    bytes.length > 3 &&
-    bytes[0] === 0x1a &&
-    bytes[1] === 0x45 &&
-    bytes[2] === 0xdf &&
-    bytes[3] === 0xa3;
+const ALLOWED_AUDIO_EXT = ["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus", "weba"];
 
-  if (["mp3"].includes(ext) && isMp3) return true;
-  if (["wav"].includes(ext) && isWav) return true;
-  if (["ogg", "opus"].includes(ext) && isOgg) return true;
-  if (["flac"].includes(ext) && isFlac) return true;
-  if (["aac"].includes(ext) && isAac) return true;
-  if (["m4a"].includes(ext) && isMp4Family) return true;
-  if (["weba"].includes(ext) && (isWebm || isMp4Family)) return true;
-
-  if (mime === "audio/mpeg" && isMp3) return true;
-  if (mime === "audio/wav" && isWav) return true;
-  if ((mime === "audio/ogg" || mime === "audio/opus") && isOgg) return true;
-  if (mime === "audio/flac" && isFlac) return true;
-  if (mime === "audio/aac" && isAac) return true;
-  if ((mime === "audio/mp4" || mime === "audio/x-m4a") && isMp4Family) return true;
-  if (mime === "audio/webm" && (isWebm || isMp4Family)) return true;
-
-  return false;
+function validateAudioUploadMeta(fileName: string, contentType: string) {
+  if (!contentType.startsWith("audio/")) {
+    throw new Error("Apenas arquivos de áudio são permitidos");
+  }
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const ext = safeName.split(".").pop()?.toLowerCase() ?? "";
+  if (!ALLOWED_AUDIO_EXT.includes(ext)) {
+    throw new Error("Apenas arquivos de áudio são permitidos");
+  }
+  return { safeName, ext };
 }
 
 async function fetchSpotifyArtist(url: string): Promise<string | undefined> {
@@ -209,10 +191,55 @@ export const submitTrack = createServerFn({ method: "POST" })
     return inserted;
   });
 
-export const submitUploadedTrack = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => UploadInput.parse(input))
+export const createUploadTicket = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => UploadTicketInput.parse(input))
   .handler(async ({ data }) => {
-    enforceRateLimit({ bucket: "queue-submit-upload", limit: 8, windowMs: 60_000 });
+    enforceRateLimit({ bucket: "queue-upload-ticket", limit: 8, windowMs: 60_000 });
+    await assertPublicAppAvailable();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: room, error: roomErr } = await supabaseAdmin
+      .from("rooms")
+      .select("id, is_open, allow_upload, require_payment")
+      .eq("slug", data.roomSlug)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (roomErr) throw new Error(roomErr.message);
+    if (!room) throw new Error("Sala não encontrada");
+    if (!room.is_open) throw new Error("A fila está fechada");
+    if (!room.allow_upload) throw new Error("Esta sala não aceita upload de arquivo");
+
+    const { safeName } = validateAudioUploadMeta(data.fileName, data.contentType);
+    const { data: dup } = await supabaseAdmin
+      .from("queue_items")
+      .select("id")
+      .eq("room_id", room.id)
+      .eq("title", data.title)
+      .eq("source", "upload")
+      .in("status", ["queued", "playing"])
+      .maybeSingle();
+    if (dup) throw new Error("Essa música já está na fila");
+
+    const folder = room.require_payment ? "paid" : "direct";
+    const storagePath = `${room.id}/${folder}/${Date.now()}-${safeName}`;
+    const { data: ticket, error: ticketErr } = await supabaseAdmin.storage
+      .from("song-uploads")
+      .createSignedUploadUrl(storagePath, { upsert: false });
+    if (ticketErr) throw new Error(ticketErr.message);
+
+    return {
+      path: ticket.path,
+      token: ticket.token,
+      signedUrl: ticket.signedUrl,
+      title: data.title,
+      requiresPayment: Boolean(room.require_payment),
+    };
+  });
+
+export const submitUploadedTrackFromStorage = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => StorageUploadInput.parse(input))
+  .handler(async ({ data }) => {
+    enforceRateLimit({ bucket: "queue-submit-storage-upload", limit: 8, windowMs: 60_000 });
     await assertPublicAppAvailable();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -228,24 +255,19 @@ export const submitUploadedTrack = createServerFn({ method: "POST" })
     if (room.require_payment) throw new Error("Esta sala aceita apenas músicas pagas");
     if (!room.allow_upload) throw new Error("Esta sala não aceita upload de arquivo");
 
-    // Validate content type and extension
-    if (!data.contentType.startsWith("audio/")) {
-      throw new Error("Apenas arquivos de áudio são permitidos");
-    }
-    const allowedExt = ["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus", "weba"];
-    const safeName = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const ext = safeName.split(".").pop()?.toLowerCase() ?? "";
-    if (!allowedExt.includes(ext)) {
-      throw new Error("Apenas arquivos de áudio são permitidos");
+    const safePrefix = `${room.id}/direct/`;
+    if (
+      !data.storagePath.startsWith(safePrefix) ||
+      data.storagePath.includes("..") ||
+      data.storagePath.includes("//")
+    ) {
+      throw new Error("Arquivo inválido");
     }
 
-    // Decode + size check
-    const bytes = Buffer.from(data.fileBase64, "base64");
-    if (bytes.byteLength === 0) throw new Error("Arquivo vazio");
-    if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error("Arquivo máximo: 15 MB");
-    if (!looksLikeAudio(bytes, ext, data.contentType)) {
-      throw new Error("Arquivo inválido ou formato de áudio não reconhecido");
-    }
+    const { error: signedErr } = await supabaseAdmin.storage
+      .from("song-uploads")
+      .createSignedUrl(data.storagePath, 60);
+    if (signedErr) throw new Error("Arquivo não encontrado");
 
     const { data: dup } = await supabaseAdmin
       .from("queue_items")
@@ -255,23 +277,17 @@ export const submitUploadedTrack = createServerFn({ method: "POST" })
       .eq("source", "upload")
       .in("status", ["queued", "playing"])
       .maybeSingle();
-    if (dup) throw new Error("Essa música já está na fila");
-
-    const storagePath = `${room.id}/${Date.now()}-${safeName}`;
-    const { error: upErr } = await supabaseAdmin.storage
-      .from("song-uploads")
-      .upload(storagePath, bytes, {
-        contentType: data.contentType,
-        upsert: false,
-      });
-    if (upErr) throw new Error(upErr.message);
+    if (dup) {
+      await supabaseAdmin.storage.from("song-uploads").remove([data.storagePath]);
+      throw new Error("Essa música já está na fila");
+    }
 
     const { data: inserted, error: insErr } = await supabaseAdmin
       .from("queue_items")
       .insert({
         room_id: room.id,
         source: "upload",
-        url: storagePath,
+        url: data.storagePath,
         title: data.title,
         artist: null,
         thumbnail_url: null,
@@ -281,71 +297,8 @@ export const submitUploadedTrack = createServerFn({ method: "POST" })
       .select()
       .single();
     if (insErr) {
-      // Clean up the uploaded file if the queue insert fails
-      await supabaseAdmin.storage.from("song-uploads").remove([storagePath]);
+      await supabaseAdmin.storage.from("song-uploads").remove([data.storagePath]);
       throw new Error(insErr.message);
     }
     return inserted;
-  });
-
-export const preparePaidUploadedTrack = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => UploadInput.parse(input))
-  .handler(async ({ data }) => {
-    enforceRateLimit({ bucket: "queue-prepare-paid-upload", limit: 8, windowMs: 60_000 });
-    await assertPublicAppAvailable();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: room, error: roomErr } = await supabaseAdmin
-      .from("rooms")
-      .select("id, is_open, allow_upload, require_payment")
-      .eq("slug", data.roomSlug)
-      .is("archived_at", null)
-      .maybeSingle();
-    if (roomErr) throw new Error(roomErr.message);
-    if (!room) throw new Error("Sala não encontrada");
-    if (!room.is_open) throw new Error("A fila está fechada");
-    if (!room.require_payment) throw new Error("Esta sala não exige pagamento para upload");
-    if (!room.allow_upload) throw new Error("Esta sala não aceita upload de arquivo");
-
-    if (!data.contentType.startsWith("audio/")) {
-      throw new Error("Apenas arquivos de áudio são permitidos");
-    }
-    const allowedExt = ["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus", "weba"];
-    const safeName = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const ext = safeName.split(".").pop()?.toLowerCase() ?? "";
-    if (!allowedExt.includes(ext)) {
-      throw new Error("Apenas arquivos de áudio são permitidos");
-    }
-
-    const bytes = Buffer.from(data.fileBase64, "base64");
-    if (bytes.byteLength === 0) throw new Error("Arquivo vazio");
-    if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error("Arquivo máximo: 15 MB");
-    if (!looksLikeAudio(bytes, ext, data.contentType)) {
-      throw new Error("Arquivo inválido ou formato de áudio não reconhecido");
-    }
-
-    const { data: dup } = await supabaseAdmin
-      .from("queue_items")
-      .select("id")
-      .eq("room_id", room.id)
-      .eq("title", data.title)
-      .eq("source", "upload")
-      .in("status", ["queued", "playing"])
-      .maybeSingle();
-    if (dup) throw new Error("Essa música já está na fila");
-
-    const storagePath = `${room.id}/paid/${Date.now()}-${safeName}`;
-    const { error: upErr } = await supabaseAdmin.storage
-      .from("song-uploads")
-      .upload(storagePath, bytes, {
-        contentType: data.contentType,
-        upsert: false,
-      });
-    if (upErr) throw new Error(upErr.message);
-
-    return {
-      source: "upload" as const,
-      url: storagePath,
-      title: data.title,
-    };
   });

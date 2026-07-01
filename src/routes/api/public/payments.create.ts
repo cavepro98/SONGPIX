@@ -129,7 +129,7 @@ export const Route = createFileRoute("/api/public/payments/create")({
             if (body.song.source === "upload") {
               if (!room.allow_upload) return json(request, { error: "Upload não permitido" }, 400);
               const storagePath = body.song.url.trim();
-              const safePrefix = `${room.id}/`;
+              const safePrefix = `${room.id}/paid/`;
               if (
                 !storagePath.startsWith(safePrefix) ||
                 storagePath.includes("..") ||

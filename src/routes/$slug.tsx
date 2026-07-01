@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  preparePaidUploadedTrack,
+  createUploadTicket,
   submitTrack,
-  submitUploadedTrack,
+  submitUploadedTrackFromStorage,
 } from "@/lib/queue.functions";
 import PixCheckoutModal from "@/components/PixCheckoutModal";
 import { toast } from "sonner";
@@ -115,8 +115,8 @@ function normalizeUserHandle(value: string) {
 function ViewerRoom() {
   const { slug } = Route.useParams();
   const submit = useServerFn(submitTrack);
-  const submitUpload = useServerFn(submitUploadedTrack);
-  const preparePaidUpload = useServerFn(preparePaidUploadedTrack);
+  const createUpload = useServerFn(createUploadTicket);
+  const submitStorageUpload = useServerFn(submitUploadedTrackFromStorage);
   const [pixOpen, setPixOpen] = useState(false);
   const [pixTarget, setPixTarget] = useState<{
     itemId?: string;
@@ -353,31 +353,28 @@ function ViewerRoom() {
           setTimeout(() => done(false), 4000);
         });
         if (!decoded) throw new Error("Arquivo inválido — não foi possível ler como áudio.");
-        const fileBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            const comma = result.indexOf(",");
-            resolve(comma >= 0 ? result.slice(comma + 1) : result);
-          };
-          reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
-          reader.readAsDataURL(file);
+        const uploadTicket = await createUpload({
+          data: {
+            roomSlug: room.slug,
+            fileName: file.name,
+            contentType: file.type || "audio/mpeg",
+            title: trackTitle.trim(),
+            submitterName: cleanName,
+          },
         });
-        const uploadPayload = {
-          roomSlug: room.slug,
-          fileName: file.name,
-          fileBase64,
-          contentType: file.type || "audio/mpeg",
-          title: trackTitle.trim(),
-          submitterName: cleanName,
-        };
+        const { error: uploadErr } = await supabase.storage
+          .from("song-uploads")
+          .uploadToSignedUrl(uploadTicket.path, uploadTicket.token, file, {
+            contentType: file.type || "audio/mpeg",
+            upsert: false,
+          });
+        if (uploadErr) throw new Error(uploadErr.message);
         if (room.require_payment) {
-          const prepared = await preparePaidUpload({ data: uploadPayload });
           setPixTarget({
             amountCents: room.min_boost_cents,
             song: {
-              url: prepared.url,
-              title: prepared.title,
+              url: uploadTicket.path,
+              title: uploadTicket.title,
               source: "upload",
             },
           });
@@ -385,7 +382,14 @@ function ViewerRoom() {
           localStorage.setItem("songpix_name", cleanName);
           return;
         }
-        await submitUpload({ data: uploadPayload });
+        await submitStorageUpload({
+          data: {
+            roomSlug: room.slug,
+            storagePath: uploadTicket.path,
+            title: trackTitle.trim(),
+            submitterName: cleanName,
+          },
+        });
         setFile(null);
         setTrackTitle("");
         toast.success("Música enviada pro dono da live!");
