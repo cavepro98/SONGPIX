@@ -46,7 +46,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "SongPIX — fila ao vivo, controlada por quem paga mais" },
       {
         property: "og:description",
-        content: "Console industrial pra DJs e streamers. Fila compartilhada com boost.",
+        content: "Console industrial pra DJs e streamers. Fila compartilhada com fura fila.",
       },
     ],
   }),
@@ -355,7 +355,7 @@ function Landing() {
                 k: "01",
                 icon: Globe,
                 t: "Crie sua sala",
-                d: "Configure o nome, o preço mínimo do boost e as plataformas que aceita — YouTube, Spotify e SoundCloud. É gratuito e leva menos de 1 minuto.",
+                d: "Configure o nome, o preço mínimo do fura fila e as plataformas que aceita — YouTube, Spotify e SoundCloud. É gratuito e leva menos de 1 minuto.",
               },
               {
                 k: "02",
@@ -410,7 +410,7 @@ function Landing() {
               {
                 icon: DollarSign,
                 t: "Preço sob seu controle",
-                d: "Você define o valor mínimo pro boost. O viewer pode pagar acima disso pra garantir o topo da fila. Você escolhe, o público decide.",
+                d: "Você define o valor mínimo pro fura fila. O viewer pode pagar acima disso pra garantir o topo da fila. Você escolhe, o público decide.",
               },
               {
                 icon: Zap,
@@ -510,7 +510,7 @@ function Landing() {
           </h2>
           <p className="mb-12 max-w-xl text-sm leading-relaxed text-muted-foreground">
             Não cobramos mensalidade. SongPIX é gratuito pra criar salas e receber músicas. Quando
-            alguém der boost, você recebe o valor e a gente fica com uma pequena taxa de operação.
+            alguém usar o fura fila, você recebe o valor e a gente fica com uma pequena taxa de operação.
           </p>
 
           <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
@@ -535,10 +535,10 @@ function Landing() {
             </div>
             <div className="bg-background p-8">
               <h3 className="font-display text-lg font-bold uppercase tracking-tight">
-                Boost & Monetização
+                Fura Fila & Monetização
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Você define o valor mínimo do boost. Quanto mais o viewer paga, mais alto sobe na
+                Você define o valor mínimo do fura fila. Quanto mais o viewer paga, mais alto sobe na
                 fila. Receba direto e monetize sua audiência.
               </p>
               <ul className="mt-6 space-y-3">
@@ -584,7 +584,7 @@ function Landing() {
                 a: "Sim! SongPIX funciona com TikTok Live, YouTube, Twitch, Kick, Instagram Live ou qualquer outra. É só compartilhar o link da fila no chat ou bio.",
               },
               {
-                q: "Quem define o preço do boost?",
+                q: "Quem define o preço do fura fila?",
                 a: "Você! Ao criar a sala, define o valor mínimo. O viewer pode pagar exatamente isso ou mais, dependendo de quanto quer garantir a prioridade.",
               },
               {
@@ -596,7 +596,7 @@ function Landing() {
                 a: "Não. SongPIX é 100% web. Tanto o criador quanto o viewer acessam pelo navegador, em qualquer dispositivo.",
               },
               {
-                q: "Como eu recebo o dinheiro dos boosts?",
+                q: "Como eu recebo o dinheiro dos fura filas?",
                 a: "Todas as arrecadações aparecem no seu painel em tempo real. A retirada é feita de forma simples e direta para a sua conta bancária cadastrada.",
               },
             ].map((faq, i) => (

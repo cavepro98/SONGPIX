@@ -582,7 +582,7 @@ function AdminPage() {
                     <th className="px-4 py-3">Nome</th>
                     <th className="px-4 py-3">Slug</th>
                     <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Boost mín.</th>
+                    <th className="px-4 py-3">Fura fila mín.</th>
                     <th className="px-4 py-3">Receita 30d</th>
                     <th className="px-4 py-3">Criada</th>
                     <th className="px-4 py-3 text-right">Ações</th>
@@ -670,7 +670,7 @@ function AdminPage() {
                       <th className="px-4 py-3">Música</th>
                       <th className="px-4 py-3">Quem enviou</th>
                       <th className="px-4 py-3">Fonte</th>
-                      <th className="px-4 py-3">Boost</th>
+                      <th className="px-4 py-3">Fura fila</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
@@ -1057,7 +1057,7 @@ function AdminPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="mb-1 block text-xs uppercase text-muted-foreground">
-                          Boost mín. (R$)
+                          Fura fila mín. (R$)
                         </label>
                         <input
                           type="number"
@@ -1075,7 +1075,7 @@ function AdminPage() {
                       </div>
                       <div>
                         <label className="mb-1 block text-xs uppercase text-muted-foreground">
-                          Boost máx. (R$)
+                          Fura fila máx. (R$)
                         </label>
                         <input
                           type="number"
@@ -1288,7 +1288,7 @@ function DashboardPanel({ data }: { data: Awaited<ReturnType<typeof getAdminStat
         <MetricCard label="Salas abertas agora" value={c.openRooms.toString()} icon={Unlock} />
         <MetricCard label="Lives em andamento" value={c.livesNow.toString()} icon={Wifi} accent />
         <MetricCard label="Músicas enviadas hoje" value={c.songsToday.toString()} icon={Music2} />
-        <MetricCard label="Boosts hoje" value={c.boostsToday.toString()} icon={Zap} />
+        <MetricCard label="Fura filas hoje" value={c.boostsToday.toString()} icon={Zap} />
         <MetricCard
           label="Volume financeiro hoje"
           value={formatCents(c.volumeTodayCents)}
@@ -1500,7 +1500,7 @@ function DashboardPanel({ data }: { data: Awaited<ReturnType<typeof getAdminStat
               stroke="hsl(var(--neon))"
               strokeWidth={2}
               dot={false}
-              name="boosts/dia"
+              name="fura filas/dia"
             />
           </LineChart>
         </ChartCard>

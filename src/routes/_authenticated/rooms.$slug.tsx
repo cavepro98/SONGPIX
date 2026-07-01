@@ -1203,7 +1203,7 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
   {
     key: "alert",
     label: "🔔 Alerta de apoio (com som)",
-    desc: "Pop-up animado + chime quando alguém faz um boost. Mantenha o áudio do Browser Source ativo no OBS.",
+    desc: "Pop-up animado + chime quando alguém usa o fura fila. Mantenha o áudio do Browser Source ativo no OBS.",
     size: "480 × 220",
   },
   {
@@ -1230,7 +1230,7 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
     desc: "Versão compacta com QR Code e link público da sala.",
     size: "420 × 300",
   },
-  { key: "boosts", label: "Top boosts", desc: "Top 5 apoios por valor.", size: "360 × 480" },
+  { key: "boosts", label: "Top fura filas", desc: "Top 5 apoios por valor.", size: "360 × 480" },
   {
     key: "supporter",
     label: "Último apoiador",

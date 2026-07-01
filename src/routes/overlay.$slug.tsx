@@ -461,7 +461,7 @@ function Overlay() {
                       </span>
                     </div>
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      BOOST MÍN:&nbsp;{fmt(room.min_boost_cents)}
+                      FURA FILA MÍN:&nbsp;{fmt(room.min_boost_cents)}
                     </span>
                   </div>
                 </header>
@@ -637,7 +637,7 @@ function Overlay() {
           )}
 
           {show("boosts") && (
-            <WidgetCard label="Top boosts" icon={<Zap className="h-3 w-3" />}>
+            <WidgetCard label="Top fura filas" icon={<Zap className="h-3 w-3" />}>
               {boosts.length ? (
                 <ul className="space-y-1.5">
                   {boosts.map((b) => (
@@ -653,7 +653,7 @@ function Overlay() {
                   ))}
                 </ul>
               ) : (
-                <EmptyLine text="Sem boosts" />
+                <EmptyLine text="Sem fura filas" />
               )}
             </WidgetCard>
           )}

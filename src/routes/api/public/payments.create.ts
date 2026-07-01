@@ -163,7 +163,7 @@ export const Route = createFileRoute("/api/public/payments/create")({
           try {
             const mp = await mpCreatePixPayment({
               amountReais: body.amountCents / 100,
-              description: `SongPIX boost - ${room.name}`.slice(0, 256),
+              description: `SongPIX fura fila - ${room.name}`.slice(0, 256),
               externalReference: created.id,
               notificationUrl,
               expirationMinutes: 15,

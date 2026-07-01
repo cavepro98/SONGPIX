@@ -142,7 +142,7 @@ export default function PixCheckoutModal(props: Props) {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <QrCode className="h-5 w-5 text-neon" />
-            <h3 className="font-display text-lg font-bold">Boost via PIX</h3>
+            <h3 className="font-display text-lg font-bold">Fura fila via PIX</h3>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />

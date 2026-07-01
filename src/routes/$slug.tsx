@@ -413,7 +413,7 @@ function ViewerRoom() {
                   </span>
                 </div>
                 <span className="font-mono text-[10px] text-muted-foreground">
-                  BOOST MÍN: {formatCents(room.min_boost_cents)}
+                  FURA FILA MÍN: {formatCents(room.min_boost_cents)}
                 </span>
               </div>
             </header>
@@ -794,7 +794,7 @@ function ViewerRoom() {
                               }}
                               className="inline-flex items-center gap-1 border border-neon/40 bg-transparent px-2 py-1.5 font-display text-[10px] font-bold uppercase tracking-widest text-neon transition-all hover:bg-neon hover:text-neon-foreground sm:px-2.5"
                             >
-                              <Zap className="h-3 w-3" /> Boost
+                              <Zap className="h-3 w-3" /> Fura fila
                             </button>
                           </div>
                         </div>
@@ -989,7 +989,7 @@ function ViewerRoom() {
                 </div>
                 <div className="border border-border bg-background p-5">
                   <span className="mb-2 block font-mono text-[10px] font-bold uppercase text-muted-foreground">
-                    Boosts Ativos
+                    Fura filas ativos
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="font-display text-3xl font-bold tabular-nums tracking-tighter text-neon">

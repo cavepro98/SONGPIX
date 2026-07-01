@@ -660,14 +660,14 @@ function Dashboard() {
             </DialogTitle>
             <DialogDescription>
               Monte uma sala para sua live, compartilhe o link com o público e receba pedidos de
-              música com boost para destacar no Top.
+              música com fura fila para destacar no Top.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
             {[
-              { icon: Plus, text: "Crie uma sala com capa, fontes aceitas e valor de boost." },
+              { icon: Plus, text: "Crie uma sala com capa, fontes aceitas e valor de fura fila." },
               { icon: Share2, text: "Envie o link público para o chat pedir músicas." },
-              { icon: Zap, text: "Use Boost e Top para organizar os pedidos mais importantes." },
+              { icon: Zap, text: "Use Fura Fila e Top para organizar os pedidos mais importantes." },
               { icon: Wallet, text: "Acompanhe ganhos e solicite saques quando atingir o mínimo." },
             ].map((item) => {
               const Icon = item.icon;
@@ -716,8 +716,8 @@ function Dashboard() {
             </DialogTitle>
             <DialogDescription>
               {editId
-                ? "Atualize nome, capa, descrição, preços de boost e fontes aceitas."
-                : "Configure o nome, capa, descrição, preço do boost e as fontes aceitas."}
+                ? "Atualize nome, capa, descrição, preços de fura fila e fontes aceitas."
+                : "Configure o nome, capa, descrição, preço do fura fila e as fontes aceitas."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-5">
@@ -800,7 +800,7 @@ function Dashboard() {
 
             <fieldset className="space-y-3 border border-border bg-background/40 p-3">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                ⚡ Boost
+                ⚡ Fura fila
               </legend>
               <div className="grid grid-cols-2 gap-3">
                 <div>

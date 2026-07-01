@@ -24,7 +24,7 @@ export function makeOverlayAlertTestMessage(slug: string, roomName?: string): Ov
     alert: {
       id: `overlay-test-${Date.now()}`,
       name: "Teste SongPIX",
-      title: roomName ? `Boost de teste em ${roomName}` : "Boost de teste no overlay",
+      title: roomName ? `Fura fila de teste em ${roomName}` : "Fura fila de teste no overlay",
       amountCents: 1500,
       thumb: null,
     },

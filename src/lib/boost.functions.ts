@@ -24,10 +24,10 @@ export const boostQueueItem = createServerFn({ method: "POST" })
 
     const room = item.rooms as unknown as { min_boost_cents: number; max_boost_cents: number };
     if (data.amountCents < room.min_boost_cents) {
-      throw new Error("Valor abaixo do boost mínimo");
+      throw new Error("Valor abaixo do fura fila mínimo");
     }
     if (room.max_boost_cents && data.amountCents > room.max_boost_cents) {
-      throw new Error("Valor acima do boost máximo");
+      throw new Error("Valor acima do fura fila máximo");
     }
 
     const { data: updated, error: updErr } = await supabaseAdmin
