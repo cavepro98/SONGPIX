@@ -184,10 +184,17 @@ function RoomPanel() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) {
+        navigate({ to: "/auth" });
+        return;
+      }
       const { data: r, error } = await supabase
         .from("rooms")
         .select("id, slug, name, description, cover_url, is_open, min_boost_cents")
         .eq("slug", slug)
+        .eq("owner_id", uid)
         .maybeSingle();
       if (!mounted) return;
       if (error || !r) {
