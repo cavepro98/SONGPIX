@@ -33,8 +33,15 @@ export const Route = createFileRoute("/api/public/webhooks/mercadopago")({
 
         const type =
           (payload as any)?.type ?? url.searchParams.get("type") ?? url.searchParams.get("topic");
+        const liveMode = (payload as any)?.live_mode;
         if (type && !String(type).includes("payment")) {
           return new Response("ignored", { status: 200 });
+        }
+        // Mercado Pago dashboard "Simular notificacoes" uses fake resource ids
+        // and live_mode=false. Treat those probes as successful URL checks.
+        if (liveMode === false) {
+          console.log("[mp-webhook] test notification acknowledged");
+          return new Response("test ok", { status: 200 });
         }
         if (!dataId) {
           console.warn("[mp-webhook] missing data id");
@@ -52,8 +59,6 @@ export const Route = createFileRoute("/api/public/webhooks/mercadopago")({
         }
 
         try {
-          // Authoritative status comes from MP API, authenticated with our access token.
-          const mp = await mpGetPayment(dataId);
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
           const { data: row, error: selErr } = await supabaseAdmin
@@ -70,6 +75,9 @@ export const Route = createFileRoute("/api/public/webhooks/mercadopago")({
             // 200 so MP stops retrying for events that don't belong to us.
             return new Response("payment not tracked", { status: 200 });
           }
+
+          // Authoritative status comes from MP API, authenticated with our access token.
+          const mp = await mpGetPayment(dataId);
 
           if (mp.status === "approved") {
             if (row.status !== "approved") {
