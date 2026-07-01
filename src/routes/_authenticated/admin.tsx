@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +63,19 @@ import { listAllWithdrawals, updateWithdrawalStatus } from "@/lib/withdrawals.fu
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin | SongPIX" }] }),
+  beforeLoad: async () => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) throw redirect({ to: "/auth" });
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (!roleData) throw redirect({ to: "/dashboard" });
+  },
   component: AdminPage,
 });
 
