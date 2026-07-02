@@ -592,43 +592,35 @@ function Overlay() {
           )}
 
           {show("request-qr") && (
-            <WidgetCard label={`${requestTitle} + QR`} icon={<Zap className="h-3 w-3" />}>
-              <div className="relative flex aspect-[4/5] min-h-[382px] flex-col items-center overflow-hidden border border-neon/30 bg-neon/[0.06] p-5 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
-                <div className="pointer-events-none absolute -left-12 top-8 h-24 w-24 rounded-full bg-neon/20 blur-2xl animate-[qr-glow_3.2s_ease-in-out_infinite]" />
-                <div className="pointer-events-none absolute -right-10 bottom-10 h-28 w-28 rounded-full bg-neon/10 blur-2xl animate-[qr-glow_3.2s_1.4s_ease-in-out_infinite]" />
-
-                <div className="relative z-10 w-full space-y-1">
-                  <div className="font-mono text-[9px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
-                    {qrSubtitle}
-                  </div>
-                  <div className="truncate border border-neon/30 bg-background/70 px-3 py-2 font-mono text-[12px] font-bold text-neon">
-                    {publicUrlLabel}
-                  </div>
-                </div>
-
-                <div className="relative z-10 my-auto grid place-items-center">
-                  <div className="absolute inset-[-14px] border border-neon/40 animate-[qr-frame_2.4s_ease-in-out_infinite]" />
-                  <div className="absolute inset-[-26px] border border-neon/20 animate-[qr-frame_2.4s_0.4s_ease-in-out_infinite]" />
-                  <div className="grid h-[168px] w-[168px] place-items-center bg-white p-3 shadow-[0_0_30px_rgba(255,255,255,0.08)]">
-                    <QRCodeSVG value={publicUrl} size={138} level="M" />
-                  </div>
-                </div>
-
-                <div className="relative z-10 w-full space-y-2">
+            <WidgetCard label="Peça sua música" icon={<Zap className="h-3 w-3" />}>
+              <div className="flex aspect-[4/5] min-h-[382px] flex-col items-center overflow-hidden bg-surface-2 p-5 text-center">
+                <div className="w-full space-y-3">
                   <div className="font-display text-[42px] font-black italic uppercase leading-[0.82] tracking-[-0.08em] text-foreground animate-[qr-title_2.8s_ease-in-out_infinite]">
                     <span className="block">Peça sua</span>
                     <span className="block text-neon">música</span>
                   </div>
-                  <div className="font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
-                    {room.slug}
+                  <div className="truncate bg-neon px-3 py-2 font-mono text-[12px] font-black text-neon-foreground">
+                    {publicUrlLabel}
+                  </div>
+                </div>
+
+                <div className="my-auto grid place-items-center">
+                  <div className="grid h-[188px] w-[188px] place-items-center bg-white p-4 shadow-[0_14px_34px_rgba(0,0,0,0.28)]">
+                    <QRCodeSVG value={publicUrl} size={138} level="M" />
+                  </div>
+                </div>
+
+                <div className="w-full space-y-2">
+                  <div className="font-mono text-[9px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
+                    {qrSubtitle}
                   </div>
                   {room.require_payment && (
-                    <div className="inline-flex border border-neon bg-neon px-2 py-1 font-display text-[9px] font-black uppercase tracking-widest text-neon-foreground">
+                    <div className="inline-flex bg-neon px-2 py-1 font-display text-[9px] font-black uppercase tracking-widest text-neon-foreground">
                       via PIX
                     </div>
                   )}
                   {!room.require_payment && (
-                    <div className="inline-flex border border-border bg-background/80 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                    <div className="inline-flex bg-background px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                       envio grátis
                     </div>
                   )}
