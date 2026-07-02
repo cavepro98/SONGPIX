@@ -470,8 +470,48 @@ function ViewerRoom() {
 
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
-        Carregando...
+      <div className="relative grid min-h-screen place-items-center overflow-hidden bg-background px-6 text-foreground">
+        <div
+          className="pointer-events-none fixed inset-0 opacity-[0.35] mix-blend-overlay"
+          style={{
+            backgroundImage: `url(${bgNoise})`,
+            backgroundRepeat: "repeat",
+            backgroundSize: "240px 240px",
+          }}
+        />
+        <div className="pointer-events-none absolute -left-24 top-16 h-56 w-56 rounded-full bg-neon/15 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 bottom-12 h-64 w-64 rounded-full bg-neon/10 blur-3xl" />
+
+        <div className="relative w-full max-w-sm animate-[soft-in_0.8s_ease-out_both] border border-border bg-surface/90 p-6 text-center shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur">
+          <div className="mx-auto grid h-14 w-14 place-items-center bg-neon text-neon-foreground shadow-neon">
+            <ListMusic className="h-7 w-7" />
+          </div>
+          <div className="mt-5 font-mono text-[10px] font-bold uppercase tracking-[0.32em] text-neon">
+            abrindo sala
+          </div>
+          <h1 className="mt-2 truncate font-display text-3xl font-black uppercase tracking-tighter">
+            {slug}
+          </h1>
+          <p className="mt-2 text-sm font-medium text-muted-foreground">
+            Sincronizando fila, música atual e pedidos da live.
+          </p>
+          <div className="mt-6 flex items-end justify-center gap-1.5">
+            {[0, 1, 2, 3, 4].map((bar) => (
+              <span
+                key={bar}
+                className="block w-2 bg-neon animate-[room-loader_0.9s_ease-in-out_infinite]"
+                style={{
+                  height: `${18 + bar * 5}px`,
+                  animationDelay: `${bar * 0.09}s`,
+                }}
+              />
+            ))}
+          </div>
+          <div className="mt-5 inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-neon" />
+            preparando experiência
+          </div>
+        </div>
       </div>
     );
   }

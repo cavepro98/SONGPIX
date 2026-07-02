@@ -1,21 +1,20 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-@import "@fontsource/space-grotesk/400.css";
-@import "@fontsource/space-grotesk/600.css";
-@import "@fontsource/space-grotesk/700.css";
-@import "@fontsource/dm-sans/400.css";
-@import "@fontsource/dm-sans/500.css";
-@import "@fontsource/dm-sans/700.css";
+@import "@fontsource/sora/400.css";
+@import "@fontsource/sora/600.css";
+@import "@fontsource/sora/700.css";
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/500.css";
+@import "@fontsource/manrope/700.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -154,6 +153,17 @@
   }
   100% {
     height: 95%;
+  }
+}
+@keyframes room-loader {
+  0%,
+  100% {
+    transform: scaleY(0.45);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
   }
 }
 @keyframes alert-in {
