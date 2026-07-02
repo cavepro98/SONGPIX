@@ -1222,13 +1222,13 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
   },
   {
     key: "request",
-    label: "Peça sua música grátis",
+    label: "Peça sua música",
     desc: "Versão compacta só com a URL pública, sem QR Code.",
     size: "520 × 230",
   },
   {
     key: "request-qr",
-    label: "Peça sua música grátis + QR",
+    label: "Peça sua música + QR",
     desc: "Versão compacta com QR Code e link público da sala.",
     size: "420 × 300",
   },

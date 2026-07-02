@@ -886,7 +886,7 @@ function ViewerRoom() {
                         className="relative border border-border bg-black/40 animate-[soft-in_0.9s_cubic-bezier(0.22,1,0.36,1)_both]"
                         style={{ animationDelay: `${idx * 90}ms` }}
                       >
-                        <div className="absolute left-0 top-0 inline-flex items-center gap-1 bg-background px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
+                        <div className="absolute left-0 top-0 inline-flex items-center gap-1 bg-primary px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-primary-foreground">
                           <Star className="h-2.5 w-2.5 fill-current" /> Top da Sala
                         </div>
                         <div className="flex items-center gap-3 p-3 sm:gap-5 sm:p-6">

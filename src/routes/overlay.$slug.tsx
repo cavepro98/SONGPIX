@@ -28,6 +28,7 @@ type Room = {
   description: string | null;
   cover_url: string | null;
   min_boost_cents: number;
+  require_payment: boolean;
 };
 
 type QueueItem = {
@@ -121,7 +122,7 @@ function Overlay() {
     (async () => {
       const { data: r } = await supabase
         .from("rooms")
-        .select("id, slug, name, description, cover_url, min_boost_cents")
+        .select("id, slug, name, description, cover_url, min_boost_cents, require_payment")
         .eq("slug", slug)
         .is("archived_at", null)
         .maybeSingle();
@@ -374,6 +375,9 @@ function Overlay() {
       : "";
   const publicUrl = publicOrigin ? `${publicOrigin}/${slug}` : `/${slug}`;
   const publicUrlLabel = publicUrl.replace(/^https?:\/\//, "");
+  const requestTitle = room.require_payment ? "Peça sua música via PIX" : "Peça sua música grátis";
+  const requestSubtitle = room.require_payment ? "donate da live" : "link direto da sala";
+  const qrSubtitle = room.require_payment ? "escaneie e apoie" : "escaneie ou digite";
 
   return (
     <div
@@ -564,17 +568,17 @@ function Overlay() {
           )}
 
           {show("request") && (
-            <WidgetCard label="Peça sua música grátis" icon={<Zap className="h-3 w-3" />}>
+            <WidgetCard label={requestTitle} icon={<Zap className="h-3 w-3" />}>
               <div className="relative overflow-hidden border border-neon/30 bg-neon/[0.06] p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
                 <div className="absolute right-0 top-0 border-l border-b border-neon/30 bg-neon px-2 py-1 font-display text-[8px] font-black uppercase tracking-[0.18em] text-neon-foreground">
                   ao vivo
                 </div>
                 <div className="space-y-2 pr-14">
                   <div className="font-display text-[26px] font-black italic uppercase leading-[0.92] tracking-tight text-foreground">
-                    Peça sua música grátis
+                    {requestTitle}
                   </div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                    link direto da sala
+                    {requestSubtitle}
                   </div>
                   <div className="truncate font-display text-base font-bold uppercase text-neon">
                     {room.slug}
@@ -588,17 +592,17 @@ function Overlay() {
           )}
 
           {show("request-qr") && (
-            <WidgetCard label="Peça sua música grátis + QR" icon={<Zap className="h-3 w-3" />}>
+            <WidgetCard label={`${requestTitle} + QR`} icon={<Zap className="h-3 w-3" />}>
               <div className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 border border-neon/30 bg-neon/[0.06] p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
                 <div className="grid h-[88px] w-[88px] place-items-center bg-white p-2">
                   <QRCodeSVG value={publicUrl} size={72} level="M" />
                 </div>
                 <div className="min-w-0 space-y-2">
                   <div className="font-display text-lg font-black italic uppercase leading-[0.95] tracking-tight text-foreground">
-                    Peça sua música grátis
+                    {requestTitle}
                   </div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                    escaneie ou digite
+                    {qrSubtitle}
                   </div>
                   <div className="truncate font-display text-base font-bold uppercase text-neon">
                     {room.slug}

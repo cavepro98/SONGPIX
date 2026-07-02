@@ -63,7 +63,7 @@ export const Route = createFileRoute("/api/public/webhooks/mercadopago")({
 
           const { data: row, error: selErr } = await supabaseAdmin
             .from("payments")
-            .select("id, status")
+            .select("id, status, song_payload")
             .eq("provider_payment_id", dataId)
             .maybeSingle();
           if (selErr) {
@@ -92,6 +92,11 @@ export const Route = createFileRoute("/api/public/webhooks/mercadopago")({
             }
           } else if (["rejected", "cancelled", "refunded", "expired"].includes(mp.status)) {
             await supabaseAdmin.from("payments").update({ status: mp.status }).eq("id", row.id);
+            const songPayload = (row as { song_payload?: Record<string, unknown> | null })
+              .song_payload;
+            if (songPayload?.source === "upload" && typeof songPayload.url === "string") {
+              await supabaseAdmin.storage.from("song-uploads").remove([songPayload.url]);
+            }
             console.log("[mp-webhook] status update", row.id, mp.status);
           }
           return new Response("ok", { status: 200 });

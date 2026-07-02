@@ -47,6 +47,11 @@ async function fetchOembed(url: string, source: "youtube" | "spotify" | "soundcl
   }
 }
 
+async function removePaidUploadIfNeeded(supabaseAdmin: any, payload: Record<string, unknown>) {
+  if (payload.source !== "upload" || typeof payload.url !== "string") return;
+  await supabaseAdmin.storage.from("song-uploads").remove([payload.url]);
+}
+
 export const Route = createFileRoute("/api/public/payments/create")({
   server: {
     handlers: {
@@ -141,6 +146,18 @@ export const Route = createFileRoute("/api/public/payments/create")({
                 .from("song-uploads")
                 .createSignedUrl(storagePath, 60);
               if (signedErr) return json(request, { error: "Arquivo não encontrado" }, 400);
+              const { data: dupUpload } = await supabaseAdmin
+                .from("queue_items")
+                .select("id")
+                .eq("room_id", room.id)
+                .eq("source", "upload")
+                .eq("title", body.song.title)
+                .in("status", ["queued", "playing"])
+                .maybeSingle();
+              if (dupUpload) {
+                await supabaseAdmin.storage.from("song-uploads").remove([storagePath]);
+                return json(request, { error: "Essa música já está na fila" }, 400);
+              }
               songPayload = {
                 source: "upload",
                 url: storagePath,
@@ -171,6 +188,14 @@ export const Route = createFileRoute("/api/public/payments/create")({
               }
 
               const meta = await fetchOembed(parsedUrl.data, source);
+              const { data: dupSong } = await supabaseAdmin
+                .from("queue_items")
+                .select("id")
+                .eq("room_id", room.id)
+                .eq("url", parsedUrl.data)
+                .in("status", ["queued", "playing"])
+                .maybeSingle();
+              if (dupSong) return json(request, { error: "Essa música já está na fila" }, 400);
               songPayload = {
                 source,
                 url: parsedUrl.data,
@@ -243,6 +268,7 @@ export const Route = createFileRoute("/api/public/payments/create")({
               200,
             );
           } catch (mpErr) {
+            await removePaidUploadIfNeeded(supabaseAdmin, songPayload);
             await supabaseAdmin
               .from("payments")
               .update({ status: "rejected" })
