@@ -744,6 +744,7 @@ function Dashboard() {
               { icon: Share2, text: "Envie o link público para o chat pedir músicas." },
               { icon: Zap, text: "Use Fura Fila e Top para organizar os pedidos mais importantes." },
               { icon: Wallet, text: "Acompanhe ganhos e solicite saques quando atingir o mínimo." },
+              { icon: MessageCircle, text: "Mande dúvidas, dicas e sugestões pelo suporte WhatsApp." },
             ].map((item) => {
               const Icon = item.icon;
               return (
