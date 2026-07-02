@@ -20,6 +20,7 @@ import {
   Pencil,
   MessageCircle,
   Zap,
+  Loader2,
 } from "lucide-react";
 import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
@@ -610,11 +611,24 @@ function Dashboard() {
               </div>
 
               {loading ? (
-                <div className="space-y-2">
+                <div className="space-y-3 border border-border bg-surface/50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center bg-neon text-neon-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    </div>
+                    <div>
+                      <p className="font-display text-sm font-bold uppercase tracking-tight">
+                        Buscando suas estações
+                      </p>
+                      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        sincronizando salas criadas no painel
+                      </p>
+                    </div>
+                  </div>
                   {Array.from({ length: 3 }).map((_, i) => (
                     <div
                       key={i}
-                      className="h-20 animate-pulse border border-border bg-surface/40"
+                      className="h-20 animate-pulse border border-border bg-background/60"
                     />
                   ))}
                 </div>
