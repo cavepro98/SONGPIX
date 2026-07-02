@@ -1229,8 +1229,8 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
   {
     key: "request-qr",
     label: "Peça sua música + QR",
-    desc: "Versão compacta com QR Code e link público da sala.",
-    size: "420 × 300",
+    desc: "Card vertical 4:5 com link, QR Code e chamada animada.",
+    size: "360 × 450",
   },
   { key: "boosts", label: "Top fura filas", desc: "Top 5 apoios por valor.", size: "360 × 480" },
   {

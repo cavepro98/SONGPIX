@@ -204,7 +204,7 @@ function Overlay() {
           now: 480,
           music: 480,
           request: 520,
-          "request-qr": 420,
+          "request-qr": 360,
           supporter: 320,
           boosts: 360,
           alert: 480,
@@ -218,7 +218,7 @@ function Overlay() {
           now: 200,
           music: 720,
           request: 230,
-          "request-qr": 300,
+          "request-qr": 450,
           supporter: 360,
           boosts: 480,
           alert: 160,
@@ -593,26 +593,45 @@ function Overlay() {
 
           {show("request-qr") && (
             <WidgetCard label={`${requestTitle} + QR`} icon={<Zap className="h-3 w-3" />}>
-              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 border border-neon/30 bg-neon/[0.06] p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
-                <div className="grid h-[88px] w-[88px] place-items-center bg-white p-2">
-                  <QRCodeSVG value={publicUrl} size={72} level="M" />
-                </div>
-                <div className="min-w-0 space-y-2">
-                  <div className="font-display text-lg font-black italic uppercase leading-[0.95] tracking-tight text-foreground">
-                    {requestTitle}
-                  </div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <div className="relative flex aspect-[4/5] min-h-[382px] flex-col items-center overflow-hidden border border-neon/30 bg-neon/[0.06] p-5 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                <div className="pointer-events-none absolute -left-12 top-8 h-24 w-24 rounded-full bg-neon/20 blur-2xl animate-[qr-glow_3.2s_ease-in-out_infinite]" />
+                <div className="pointer-events-none absolute -right-10 bottom-10 h-28 w-28 rounded-full bg-neon/10 blur-2xl animate-[qr-glow_3.2s_1.4s_ease-in-out_infinite]" />
+
+                <div className="relative z-10 w-full space-y-1">
+                  <div className="font-mono text-[9px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
                     {qrSubtitle}
                   </div>
-                  <div className="truncate font-display text-base font-bold uppercase text-neon">
+                  <div className="truncate border border-neon/30 bg-background/70 px-3 py-2 font-mono text-[12px] font-bold text-neon">
+                    {publicUrlLabel}
+                  </div>
+                </div>
+
+                <div className="relative z-10 my-auto grid place-items-center">
+                  <div className="absolute inset-[-14px] border border-neon/40 animate-[qr-frame_2.4s_ease-in-out_infinite]" />
+                  <div className="absolute inset-[-26px] border border-neon/20 animate-[qr-frame_2.4s_0.4s_ease-in-out_infinite]" />
+                  <div className="grid h-[168px] w-[168px] place-items-center bg-white p-3 shadow-[0_0_30px_rgba(255,255,255,0.08)]">
+                    <QRCodeSVG value={publicUrl} size={138} level="M" />
+                  </div>
+                </div>
+
+                <div className="relative z-10 w-full space-y-2">
+                  <div className="font-display text-[42px] font-black italic uppercase leading-[0.82] tracking-[-0.08em] text-foreground animate-[qr-title_2.8s_ease-in-out_infinite]">
+                    <span className="block">Peça sua</span>
+                    <span className="block text-neon">música</span>
+                  </div>
+                  <div className="font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
                     {room.slug}
                   </div>
-                  <div className="border-t border-border/70 pt-2">
-                    <div className="truncate font-mono text-[11px] text-neon">{publicUrlLabel}</div>
-                  </div>
-                  <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
-                    celular na camera e entra direto
-                  </div>
+                  {room.require_payment && (
+                    <div className="inline-flex border border-neon bg-neon px-2 py-1 font-display text-[9px] font-black uppercase tracking-widest text-neon-foreground">
+                      via PIX
+                    </div>
+                  )}
+                  {!room.require_payment && (
+                    <div className="inline-flex border border-border bg-background/80 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                      envio grátis
+                    </div>
+                  )}
                 </div>
               </div>
             </WidgetCard>
