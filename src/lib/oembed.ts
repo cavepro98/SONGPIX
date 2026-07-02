@@ -56,3 +56,67 @@ export function isPlaylistUrl(url: string): boolean {
     return false;
   }
 }
+
+export function isTrackUrl(url: string, source: TrackSource): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    const path = u.pathname.toLowerCase();
+    const parts = path.split("/").filter(Boolean);
+
+    if (source === "youtube") {
+      if (
+        host !== "youtube.com" &&
+        host !== "m.youtube.com" &&
+        host !== "youtu.be" &&
+        host !== "music.youtube.com"
+      ) {
+        return false;
+      }
+      if (host === "youtu.be") return parts.length === 1 && !!parts[0];
+      return (
+        (path === "/watch" && !!u.searchParams.get("v")) ||
+        (parts[0] === "shorts" && parts.length === 2 && !!parts[1]) ||
+        (parts[0] === "embed" && parts.length === 2 && !!parts[1])
+      );
+    }
+
+    if (source === "spotify") {
+      if (host !== "open.spotify.com" && host !== "spotify.com") return false;
+      return /^\/(?:intl-[a-z]{2}\/)?track\/[a-z0-9]+/i.test(path);
+    }
+
+    if (source === "soundcloud") {
+      if (host === "on.soundcloud.com") return true;
+      if (host !== "soundcloud.com" && !host.endsWith(".soundcloud.com")) return false;
+      if (path.includes("/sets/")) return false;
+      return parts.length >= 2 && !["discover", "charts", "search", "you", "stream"].includes(parts[0]!);
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export async function resolveSoundcloudShortUrl(url: string): Promise<string> {
+  try {
+    const u = new URL(url);
+    if (u.hostname.replace(/^www\./, "") !== "on.soundcloud.com") return url;
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; SongPIXBot/1.0; +https://songpix.app)",
+        Accept: "text/html",
+      },
+    });
+    const finalUrl = res.url;
+    if (finalUrl && /soundcloud\.com\//.test(finalUrl) && !/on\.soundcloud\.com/.test(finalUrl)) {
+      return finalUrl.split("?")[0]!;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}

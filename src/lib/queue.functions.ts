@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { detectSource, isPlaylistUrl, type TrackMetadata, type TrackSource } from "./oembed";
+import {
+  detectSource,
+  isPlaylistUrl,
+  isTrackUrl,
+  resolveSoundcloudShortUrl,
+  type TrackMetadata,
+  type TrackSource,
+} from "./oembed";
 import { assertPublicAppAvailable } from "./app-config.server";
 import { enforceRateLimit } from "./security.server";
 
@@ -66,28 +73,6 @@ async function fetchSpotifyArtist(url: string): Promise<string | undefined> {
   }
 }
 
-async function resolveSoundcloudShortUrl(url: string): Promise<string> {
-  try {
-    const u = new URL(url);
-    if (u.hostname.replace(/^www\./, "") !== "on.soundcloud.com") return url;
-    const res = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; SongPIXBot/1.0; +https://songpix.app)",
-        Accept: "text/html",
-      },
-    });
-    const finalUrl = res.url;
-    if (finalUrl && /soundcloud\.com\//.test(finalUrl) && !/on\.soundcloud\.com/.test(finalUrl)) {
-      return finalUrl.split("?")[0];
-    }
-    return url;
-  } catch {
-    return url;
-  }
-}
-
 async function fetchMetadata(url: string, source: TrackSource): Promise<TrackMetadata> {
   let oembedUrl: string;
   if (source === "youtube") {
@@ -132,6 +117,8 @@ export const submitTrack = createServerFn({ method: "POST" })
       source === "soundcloud" ? await resolveSoundcloudShortUrl(data.url) : data.url;
     if (isPlaylistUrl(normalizedUrl))
       throw new Error("Playlist não é aceita. Envie o link de uma música.");
+    if (!isTrackUrl(normalizedUrl, source))
+      throw new Error("Envie apenas o link direto de uma música.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

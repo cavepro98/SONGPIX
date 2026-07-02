@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { mpCreatePixPayment } from "@/lib/mercadopago.server";
-import { detectSource, isPlaylistUrl } from "@/lib/oembed";
+import { detectSource, isPlaylistUrl, isTrackUrl, resolveSoundcloudShortUrl } from "@/lib/oembed";
 import { assertPublicAppAvailable } from "@/lib/app-config.server";
 import { publicJsonResponse, publicOptionsResponse } from "@/lib/cors.server";
 import { createPaymentStatusToken, enforceRateLimit } from "@/lib/security.server";
@@ -170,12 +170,19 @@ export const Route = createFileRoute("/api/public/payments/create")({
               if (!parsedUrl.success) return json(request, { error: "Link inválido" }, 400);
               const source = detectSource(parsedUrl.data);
               if (!source) return json(request, { error: "Fonte não suportada" }, 400);
-              if (isPlaylistUrl(parsedUrl.data)) {
+              const normalizedUrl =
+                source === "soundcloud"
+                  ? await resolveSoundcloudShortUrl(parsedUrl.data)
+                  : parsedUrl.data;
+              if (isPlaylistUrl(normalizedUrl)) {
                 return json(
                   request,
                   { error: "Playlist não é aceita. Envie o link de uma música." },
                   400,
                 );
+              }
+              if (!isTrackUrl(normalizedUrl, source)) {
+                return json(request, { error: "Envie apenas o link direto de uma música." }, 400);
               }
               if (source === "youtube" && !room.allow_youtube) {
                 return json(request, { error: "YouTube não permitido" }, 400);
@@ -187,18 +194,18 @@ export const Route = createFileRoute("/api/public/payments/create")({
                 return json(request, { error: "SoundCloud não permitido" }, 400);
               }
 
-              const meta = await fetchOembed(parsedUrl.data, source);
+              const meta = await fetchOembed(normalizedUrl, source);
               const { data: dupSong } = await supabaseAdmin
                 .from("queue_items")
                 .select("id")
                 .eq("room_id", room.id)
-                .eq("url", parsedUrl.data)
+                .eq("url", normalizedUrl)
                 .in("status", ["queued", "playing"])
                 .maybeSingle();
               if (dupSong) return json(request, { error: "Essa música já está na fila" }, 400);
               songPayload = {
                 source,
-                url: parsedUrl.data,
+                url: normalizedUrl,
                 title: meta?.title ?? body.song.title,
                 artist: body.song.artist ?? meta?.author_name ?? "",
                 thumbnail_url: body.song.thumbnailUrl ?? meta?.thumbnail_url ?? "",
