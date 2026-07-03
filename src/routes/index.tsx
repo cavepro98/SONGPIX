@@ -41,12 +41,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Crie a sala da sua live. Seus viewers mandam música pela fila e quem paga mais sobe no topo.",
+          "Crie uma sala para sua live, receba pedidos de música e permita apoios via PIX com fura fila.",
       },
-      { property: "og:title", content: "SongPIX — fila ao vivo, controlada por quem paga mais" },
+      { property: "og:title", content: "SongPIX — pedidos de música com PIX para lives" },
       {
         property: "og:description",
-        content: "Console industrial pra DJs e streamers. Fila compartilhada com fura fila.",
+        content: "Sala pública, fila ao vivo, fura fila via PIX e overlays para streamers e DJs.",
       },
     ],
   }),
@@ -133,19 +133,19 @@ function Landing() {
             <div className="mb-6 inline-flex items-center gap-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-neon shadow-[0_0_8px_var(--neon)]" />
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-neon">
-                Live Queue System
+                Pedidos de música via PIX
               </span>
             </div>
 
             <h1 className="font-display text-5xl font-bold italic uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl">
-              A sua live <br />
-              no <span className="text-neon">controle</span> deles.
+              Sua live com <br />
+              música, PIX e <span className="text-neon">fila ao vivo</span>.
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground">
-              SongPIX é a fila de músicas interativa que transforma seus viewers em DJ's. Eles
-              mandam o link, pagam pra furar a fila, e você toca o hype em tempo real. Ideal pra
-              streamers, DJs e criadores de conteúdo que querem monetizar a interação.
+              Crie uma sala, compartilhe o link com o público e receba pedidos de música em tempo
+              real. Quem quiser apoiar usa o Fura Fila via PIX para ganhar prioridade, enquanto
+              você mantém o controle do que entra, toca ou sai da fila.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-3">
@@ -153,7 +153,7 @@ function Landing() {
                 to="/auth"
                 className="inline-flex items-center gap-2 border border-neon bg-neon px-8 py-4 font-display text-xs font-bold uppercase tracking-widest text-neon-foreground transition-all hover:opacity-90"
               >
-                Criar sala agora <ArrowRight className="h-4 w-4" />
+                Criar primeira sala <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/auth"
@@ -163,23 +163,23 @@ function Landing() {
               </Link>
             </div>
 
-            <div className="mt-14 flex gap-10">
+            <div className="mt-14 grid max-w-xl gap-3 sm:grid-cols-3">
               <div>
-                <div className="font-display text-2xl font-bold text-neon">120+</div>
+                <div className="font-display text-2xl font-bold text-neon">Link</div>
                 <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Lives Ativas
+                  sala pública
                 </div>
               </div>
               <div>
-                <div className="font-display text-2xl font-bold text-neon">0.4s</div>
+                <div className="font-display text-2xl font-bold text-neon">PIX</div>
                 <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Latência
+                  fura fila
                 </div>
               </div>
               <div>
-                <div className="font-display text-2xl font-bold text-neon">8K</div>
+                <div className="font-display text-2xl font-bold text-neon">OBS</div>
                 <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Tocadas/Dia
+                  overlays
                 </div>
               </div>
             </div>
@@ -302,22 +302,22 @@ function Landing() {
               {
                 icon: Mic2,
                 title: "DJs & Produtores",
-                desc: "Deixe o público escolher o próximo drop. Fila ao vivo, prioridade por pagamento e controle total da pista virtual.",
+                desc: "Receba sugestões do público sem perder o controle da pista. Você decide o que toca, destaca músicas no Top e organiza a fila.",
               },
               {
                 icon: Tv,
                 title: "Streamers & Creators",
-                desc: "Transforme sua live em uma experiência sonora interativa. Viewers mandam músicas, pagam pra furar a fila e o engajamento explode.",
+                desc: "Transforme pedidos de música em interação. O público envia links, apoia via PIX e acompanha a fila em tempo real.",
               },
               {
                 icon: Gamepad2,
                 title: "Gamers & IRL",
-                desc: "Perfeito pra quem faz Just Chatting, gameplay ou IRL. A música vira parte da conversa e a comunidade se conecta de verdade.",
+                desc: "Perfeito pra Just Chatting, gameplay ou IRL. A música vira parte da conversa e a comunidade participa sem bagunçar o chat.",
               },
               {
                 icon: Radio,
                 title: "Rádios Online",
-                desc: "Abra a programação pro ouvinte. Quem pagar mais, escolhe o som. Uma nova forma de monetizar sua audiência em tempo real.",
+                desc: "Abra espaço para pedidos do ouvinte com fila organizada, prioridade por apoio e painel para moderar tudo ao vivo.",
               },
             ].map((item) => (
               <div
@@ -367,7 +367,7 @@ function Landing() {
                 k: "03",
                 icon: TrendingUp,
                 t: "Monetize o hype",
-                d: "Quem quiser prioridade paga o valor que achar justo. Quanto maior o valor, mais alto na fila. Você controla tudo pelo painel em tempo real.",
+                d: "Quem quiser prioridade faz um apoio via PIX a partir do mínimo definido na sala. Valores maiores sobem na fila, e você controla tudo pelo painel.",
               },
             ].map((f) => (
               <div key={f.k} className="bg-background p-8">
@@ -443,43 +443,40 @@ function Landing() {
         </div>
       </section>
 
-      {/* SOCIAL PROOF */}
+      {/* VALUE PROOF */}
       <section className="border-b border-border px-6 py-20 sm:px-12 lg:px-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 flex items-center gap-3">
             <div className="h-[2px] w-12 bg-neon" />
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-neon">
-              Quem usa
+              O que resolve
             </span>
           </div>
 
           <h2 className="mb-12 max-w-2xl font-display text-3xl font-bold uppercase leading-tight tracking-tight sm:text-4xl">
-            A galera já tá <span className="text-neon">no hype</span>.
+            Menos bagunça no chat, mais <span className="text-neon">controle na live</span>.
           </h2>
 
           <div className="grid gap-px border border-border bg-border sm:grid-cols-3">
             {[
               {
-                quote:
-                  "Minhas lives de drift viraram evento. O chat enlouquece quando alguém paga R$ 100 pra furar a fila com Brazilian Phonk.",
-                author: "Lucas Vibe",
-                role: "Streamer de Drift",
+                quote: "Pedidos espalhados no chat somem rápido e viram bagunça.",
+                author: "Fila centralizada",
+                role: "Cada pedido entra em uma sala pública com nome, música e prioridade.",
               },
               {
-                quote:
-                  "Antes eu tinha que ler comentário por comentário. Agora o público manda o link e paga pra priorizar. O engajamento triplicou.",
-                author: "DJ TK",
-                role: "DJ & Produtor",
+                quote: "Apoios precisam aparecer sem você controlar tudo manualmente.",
+                author: "PIX + painel",
+                role: "Pagamentos aprovados entram na fila e ficam registrados no painel.",
               },
               {
-                quote:
-                  "Uso em todas as minhas lives de Just Chatting. Os viewers adoram ver a fila subindo e o equalizador pulsando junto.",
-                author: "Kaio MC",
-                role: "Creator de IRL",
+                quote: "A live precisa mostrar o que está tocando sem poluir a tela.",
+                author: "Overlays prontos",
+                role: "Use widgets de fila, QR Code e alertas em OBS, TikTok ou navegador.",
               },
             ].map((t, i) => (
               <div key={i} className="bg-background p-8">
-                <p className="text-sm leading-relaxed text-muted-foreground">“{t.quote}”</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">{t.quote}</p>
                 <div className="mt-6 flex items-center gap-3">
                   <div className="h-8 w-8 bg-neon/10" />
                   <div>
@@ -539,7 +536,7 @@ function Landing() {
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 Você define o valor mínimo do fura fila. Quanto mais o viewer paga, mais alto sobe na
-                fila. Receba direto e monetize sua audiência.
+                fila. Os apoios ficam registrados no painel para acompanhar ganhos e solicitar saque.
               </p>
               <ul className="mt-6 space-y-3">
                 {[
@@ -577,7 +574,7 @@ function Landing() {
             {[
               {
                 q: "Como o público envia músicas?",
-                a: "Basta compartilhar o link da sua sala. O viewer acessa, cola o link do YouTube, Spotify ou SoundCloud e clica em enviar. Se quiser prioridade, paga o valor que achar justo.",
+                a: "Basta compartilhar o link da sua sala. O público acessa, cola o link da música ou faz upload quando permitido. Se quiser prioridade, pode apoiar via PIX pelo Fura Fila.",
               },
               {
                 q: "Posso usar em qualquer plataforma de live?",
@@ -589,7 +586,7 @@ function Landing() {
               },
               {
                 q: "É seguro? Meus dados estão protegidos?",
-                a: "Totalmente. Usamos autenticação segura, Row Level Security no banco de dados e todas as transações são processadas com criptografia de ponta a ponta.",
+                a: "Usamos autenticação segura, regras de acesso no banco de dados e pagamentos processados por integração de pagamento. O dono da sala acessa apenas os dados das próprias salas.",
               },
               {
                 q: "Preciso instalar algum app?",
@@ -621,7 +618,7 @@ function Landing() {
         />
         <div className="relative mx-auto max-w-4xl text-center">
           <h2 className="font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-5xl">
-            Pronto pra <span className="text-neon">dominar</span> a sua live?
+            Pronto pra <span className="text-neon">organizar</span> os pedidos da sua live?
           </h2>
           <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-muted-foreground">
             Crie sua sala agora, é gratuito. Em menos de um minuto você já pode compartilhar o link
