@@ -61,7 +61,6 @@ import {
 import { getAdminStats } from "@/lib/admin-stats.functions";
 import { getPlatformSettings, updatePlatformSettings } from "@/lib/admin-settings.functions";
 import { listAllWithdrawals, updateWithdrawalStatus } from "@/lib/withdrawals.functions";
-import { listAllPayments } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin | SongPIX" }] }),
@@ -122,6 +121,34 @@ type Stats = {
   boostCents: number;
 };
 
+type AdminTransactionHistory = {
+  totals: {
+    gross: number;
+    net: number;
+    commission: number;
+    approvedCount: number;
+  };
+  payments: Array<{
+    id: string;
+    room_id: string | null;
+    owner_id: string | null;
+    payer_name: string | null;
+    payer_email: string | null;
+    amount_cents: number | null;
+    commission_cents: number | null;
+    net_cents: number | null;
+    provider: string | null;
+    provider_payment_id: string | null;
+    status: string | null;
+    created_at: string;
+    paid_at: string | null;
+    song_payload: Record<string, unknown> | null;
+    room_name: string | null;
+    room_slug: string | null;
+    owner_display_name: string | null;
+  }>;
+};
+
 function formatCents(c: number) {
   return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -168,15 +195,13 @@ function AdminPage() {
   const [tab, setTab] = useState<
     "dashboard" | "rooms" | "queue" | "users" | "transactions" | "withdrawals" | "settings"
   >("dashboard");
-  const [transactions, setTransactions] = useState<Awaited<ReturnType<typeof listAllPayments>> | null>(
-    null,
-  );
+  const [transactions, setTransactions] = useState<AdminTransactionHistory | null>(null);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
   const [withdrawals, setWithdrawals] = useState<Awaited<ReturnType<typeof listAllWithdrawals>>>(
     [],
   );
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [loadingW, setLoadingW] = useState(false);
-  const fetchAllPayments = useServerFn(listAllPayments);
   const fetchAllW = useServerFn(listAllWithdrawals);
   const updateW = useServerFn(updateWithdrawalStatus);
   const [adminStats, setAdminStats] = useState<Awaited<ReturnType<typeof getAdminStats>> | null>(
@@ -352,6 +377,75 @@ function AdminPage() {
     }
   }
 
+  async function loadTransactions() {
+    setLoadingTransactions(true);
+    setTransactionsError(null);
+    try {
+      const [paymentsRes, totalsRes] = await Promise.all([
+        supabase
+          .from("payments")
+          .select(
+            "id, room_id, owner_id, payer_name, payer_email, amount_cents, commission_cents, net_cents, provider, provider_payment_id, status, created_at, paid_at, song_payload",
+          )
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("payments")
+          .select("amount_cents, commission_cents, net_cents, status")
+          .eq("status", "approved"),
+      ]);
+
+      if (paymentsRes.error) throw new Error(paymentsRes.error.message);
+      if (totalsRes.error) throw new Error(totalsRes.error.message);
+
+      const payments = paymentsRes.data ?? [];
+      const ownerIds = [...new Set(payments.map((p) => p.owner_id).filter(Boolean))];
+      const roomIds = [...new Set(payments.map((p) => p.room_id).filter(Boolean))];
+
+      const [profilesRes, roomsRes] = await Promise.all([
+        ownerIds.length
+          ? supabase.from("profiles").select("id, display_name").in("id", ownerIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        roomIds.length
+          ? supabase.from("rooms").select("id, name, slug").in("id", roomIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+      ]);
+
+      if (profilesRes.error) throw new Error(profilesRes.error.message);
+      if (roomsRes.error) throw new Error(roomsRes.error.message);
+
+      const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
+      const roomMap = new Map((roomsRes.data ?? []).map((r: any) => [r.id, r]));
+      const approved = totalsRes.data ?? [];
+
+      setTransactions({
+        totals: {
+          gross: approved.reduce((sum, p) => sum + Number(p.amount_cents || 0), 0),
+          net: approved.reduce((sum, p) => sum + Number(p.net_cents || 0), 0),
+          commission: approved.reduce((sum, p) => sum + Number(p.commission_cents || 0), 0),
+          approvedCount: approved.length,
+        },
+        payments: payments.map((p) => {
+          const room = roomMap.get(p.room_id);
+          const profile = profileMap.get(p.owner_id);
+          return {
+            ...p,
+            song_payload: (p.song_payload ?? null) as Record<string, unknown> | null,
+            room_name: room?.name ?? null,
+            room_slug: room?.slug ?? null,
+            owner_display_name: profile?.display_name ?? null,
+          };
+        }),
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Erro ao carregar transações";
+      setTransactionsError(message);
+      toast.error(message);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  }
+
   async function handleSaveSettings() {
     if (!settings) return;
     setSavingSettings(true);
@@ -396,11 +490,7 @@ function AdminPage() {
 
   useEffect(() => {
     if (tab !== "transactions" || !isAdmin) return;
-    setLoadingTransactions(true);
-    fetchAllPayments({ data: { limit: 500 } })
-      .then((d) => setTransactions(d))
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Erro ao carregar transações"))
-      .finally(() => setLoadingTransactions(false));
+    loadTransactions();
   }, [tab, isAdmin]);
 
   async function toggleRoom(room: Room) {
@@ -924,6 +1014,20 @@ function AdminPage() {
               {loadingTransactions && !transactions ? (
                 <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
                   Carregando transações…
+                </div>
+              ) : transactionsError && !transactions ? (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-6">
+                  <h2 className="font-display text-lg font-bold text-foreground">
+                    Não foi possível carregar as transações
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{transactionsError}</p>
+                  <button
+                    type="button"
+                    onClick={loadTransactions}
+                    className="mt-4 rounded-lg bg-neon px-4 py-2 text-sm font-bold text-neon-foreground"
+                  >
+                    Tentar novamente
+                  </button>
                 </div>
               ) : !transactions?.payments.length ? (
                 <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
