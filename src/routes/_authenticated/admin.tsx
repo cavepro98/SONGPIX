@@ -61,6 +61,7 @@ import {
 import { getAdminStats } from "@/lib/admin-stats.functions";
 import { getPlatformSettings, updatePlatformSettings } from "@/lib/admin-settings.functions";
 import { listAllWithdrawals, updateWithdrawalStatus } from "@/lib/withdrawals.functions";
+import { listAllPayments } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin | SongPIX" }] }),
@@ -165,12 +166,17 @@ function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [stats, setStats] = useState<Stats>({ rooms: 0, queued: 0, played: 0, boostCents: 0 });
   const [tab, setTab] = useState<
-    "dashboard" | "rooms" | "queue" | "users" | "withdrawals" | "settings"
+    "dashboard" | "rooms" | "queue" | "users" | "transactions" | "withdrawals" | "settings"
   >("dashboard");
+  const [transactions, setTransactions] = useState<Awaited<ReturnType<typeof listAllPayments>> | null>(
+    null,
+  );
   const [withdrawals, setWithdrawals] = useState<Awaited<ReturnType<typeof listAllWithdrawals>>>(
     [],
   );
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [loadingW, setLoadingW] = useState(false);
+  const fetchAllPayments = useServerFn(listAllPayments);
   const fetchAllW = useServerFn(listAllWithdrawals);
   const updateW = useServerFn(updateWithdrawalStatus);
   const [adminStats, setAdminStats] = useState<Awaited<ReturnType<typeof getAdminStats>> | null>(
@@ -388,6 +394,15 @@ function AdminPage() {
       .finally(() => setLoadingW(false));
   }, [tab, isAdmin]);
 
+  useEffect(() => {
+    if (tab !== "transactions" || !isAdmin) return;
+    setLoadingTransactions(true);
+    fetchAllPayments({ data: { limit: 500 } })
+      .then((d) => setTransactions(d))
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Erro ao carregar transações"))
+      .finally(() => setLoadingTransactions(false));
+  }, [tab, isAdmin]);
+
   async function toggleRoom(room: Room) {
     const { error } = await supabase
       .from("rooms")
@@ -460,6 +475,12 @@ function AdminPage() {
     { id: "rooms" as const, label: "Salas", icon: Radio, count: rooms.length },
     { id: "queue" as const, label: "Fila", icon: Music2, count: items.length },
     { id: "users" as const, label: "Usuários", icon: Users, count: users.length },
+    {
+      id: "transactions" as const,
+      label: "Transações",
+      icon: DollarSign,
+      count: transactions?.payments.length ?? null,
+    },
     {
       id: "withdrawals" as const,
       label: "Saques",
@@ -577,6 +598,7 @@ function AdminPage() {
                 {tab === "rooms" && `${rooms.length} salas cadastradas`}
                 {tab === "queue" && `${items.length} itens na fila global`}
                 {tab === "users" && `${users.length} usuários registrados`}
+                {tab === "transactions" && "Histórico geral de transações"}
                 {tab === "withdrawals" && `${withdrawals.length} solicitações de saque`}
                 {tab === "settings" && "Parâmetros globais da plataforma"}
               </p>
@@ -894,6 +916,151 @@ function AdminPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {tab === "transactions" && (
+            <div className="mt-4 space-y-4">
+              {loadingTransactions && !transactions ? (
+                <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
+                  Carregando transações…
+                </div>
+              ) : !transactions?.payments.length ? (
+                <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
+                  Nenhuma transação encontrada.
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <AdminMetricCard
+                      label="Volume aprovado"
+                      value={formatCents(transactions.totals.gross)}
+                      icon={DollarSign}
+                      accent
+                    />
+                    <AdminMetricCard
+                      label="Líquido clientes"
+                      value={formatCents(transactions.totals.net)}
+                      icon={Wallet}
+                    />
+                    <AdminMetricCard
+                      label="Comissão"
+                      value={formatCents(transactions.totals.commission)}
+                      icon={Percent}
+                    />
+                    <AdminMetricCard
+                      label="Aprovadas"
+                      value={transactions.totals.approvedCount.toString()}
+                      icon={Ticket}
+                    />
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-border bg-surface">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                      <div>
+                        <h2 className="font-display text-lg font-bold">
+                          Histórico geral de transações
+                        </h2>
+                        <p className="text-xs text-muted-foreground">
+                          Últimas {transactions.payments.length} transações registradas
+                        </p>
+                      </div>
+                      {loadingTransactions && (
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                          atualizando…
+                        </span>
+                      )}
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-surface-2 text-left text-xs uppercase text-muted-foreground">
+                          <tr>
+                            <th className="px-4 py-3">Data</th>
+                            <th className="px-4 py-3">Pagador</th>
+                            <th className="px-4 py-3">Sala</th>
+                            <th className="px-4 py-3">Música</th>
+                            <th className="px-4 py-3">Bruto</th>
+                            <th className="px-4 py-3">Líquido</th>
+                            <th className="px-4 py-3">Comissão</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Provider</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transactions.payments.map((p: any) => {
+                            const song = (p.song_payload ?? {}) as Record<string, unknown>;
+                            return (
+                              <tr key={p.id} className="border-t border-border align-top">
+                                <td className="px-4 py-3 text-xs text-muted-foreground">
+                                  {new Date(p.created_at).toLocaleString("pt-BR")}
+                                  {p.paid_at && (
+                                    <div className="mt-1 text-[10px] text-neon">
+                                      pago {new Date(p.paid_at).toLocaleString("pt-BR")}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="font-medium">{p.payer_name}</div>
+                                  <div className="max-w-[180px] truncate text-[10px] text-muted-foreground">
+                                    {p.payer_email ?? "sem e-mail"}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="font-medium">{p.room_name ?? "Sala removida"}</div>
+                                  <div className="text-[10px] text-muted-foreground">
+                                    {p.room_slug ? `/${p.room_slug}` : p.room_id}
+                                  </div>
+                                  {p.owner_display_name && (
+                                    <div className="mt-1 text-[10px] text-muted-foreground">
+                                      dono: {p.owner_display_name}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="max-w-[260px] truncate font-medium">
+                                    {String(song.title ?? "Música")}
+                                  </div>
+                                  <div className="max-w-[260px] truncate text-[10px] text-muted-foreground">
+                                    {String(song.artist ?? song.source ?? "—")}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 font-bold tabular-nums">
+                                  {formatCents(p.amount_cents)}
+                                </td>
+                                <td className="px-4 py-3 tabular-nums text-neon">
+                                  {formatCents(p.net_cents)}
+                                </td>
+                                <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                                  {formatCents(p.commission_cents)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                      p.status === "approved"
+                                        ? "border-neon/40 bg-neon/10 text-neon"
+                                        : p.status === "pending"
+                                          ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                                          : "border-border bg-surface-2 text-muted-foreground"
+                                    }`}
+                                  >
+                                    {p.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-muted-foreground">
+                                  <div>{p.provider}</div>
+                                  <div className="max-w-[150px] truncate font-mono text-[10px]">
+                                    {p.provider_payment_id ?? p.id}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
