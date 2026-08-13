@@ -1183,7 +1183,7 @@ function AdminPage() {
                       <tr>
                         <th className="px-4 py-3">Data</th>
                         <th className="px-4 py-3">Usuário</th>
-                        <th className="px-4 py-3">Valor</th>
+                        <th className="px-4 py-3">Valor líquido</th>
                         <th className="px-4 py-3">Método</th>
                         <th className="px-4 py-3">Destino</th>
                         <th className="px-4 py-3">Status</th>
@@ -1200,8 +1200,11 @@ function AdminPage() {
                             <div className="font-medium">{w.user_display_name ?? "—"}</div>
                             <div className="text-[10px] text-muted-foreground">{w.user_email}</div>
                           </td>
-                          <td className="px-4 py-3 font-bold tabular-nums">
-                            {formatCents(w.amount_cents)}
+                          <td className="px-4 py-3">
+                            <div className="font-bold tabular-nums">{formatCents(w.amount_cents)}</div>
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              taxa da plataforma já descontada
+                            </div>
                           </td>
                           <td className="px-4 py-3 uppercase text-xs">{w.method}</td>
                           <td className="px-4 py-3 text-xs">

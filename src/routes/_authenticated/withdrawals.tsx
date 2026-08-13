@@ -88,6 +88,9 @@ function WithdrawalsPage() {
 
   const available = data?.availableCents ?? 0;
   const minWithdrawal = data?.minWithdrawalCents ?? 500;
+  const grossCents = data?.grossCents ?? 0;
+  const commissionCents = data?.commissionCents ?? 0;
+  const netCents = data?.netCents ?? 0;
 
   const pixError = useMemo(
     () => (method === "pix" && pixKey ? validatePixKey(pixType, pixKey) : null),
@@ -175,16 +178,28 @@ function WithdrawalsPage() {
 
       <div>
         {/* Balance cards */}
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Total bruto
+              Valor original
             </p>
             <p className="mt-2 font-display text-2xl font-bold tabular-nums">
-              {formatCents(data?.grossCents ?? 0)}
+              {formatCents(grossCents)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Comissão da plataforma: {((data?.commission ?? 0) * 100).toFixed(0)}%
+              Total pago pelos clientes antes da taxa.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+              Taxa da plataforma
+            </p>
+            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-destructive">
+              -{formatCents(commissionCents)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Líquido gerado:{" "}
+              <span className="font-bold text-foreground">{formatCents(netCents)}</span>
             </p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-4">
@@ -237,7 +252,7 @@ function WithdrawalsPage() {
                 <thead className="bg-surface-2 text-left text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">Data</th>
-                    <th className="px-4 py-3">Valor</th>
+                    <th className="px-4 py-3">Valor líquido</th>
                     <th className="px-4 py-3">Método</th>
                     <th className="px-4 py-3">Destino</th>
                     <th className="px-4 py-3">Status</th>
@@ -254,6 +269,9 @@ function WithdrawalsPage() {
                         </td>
                         <td className="px-4 py-3 font-bold tabular-nums">
                           {formatCents(w.amount_cents)}
+                          <div className="mt-1 text-[10px] font-normal text-muted-foreground">
+                            taxa já descontada
+                          </div>
                         </td>
                         <td className="px-4 py-3">{w.method === "pix" ? "PIX" : "Banco"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
