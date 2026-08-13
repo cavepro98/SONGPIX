@@ -1036,23 +1036,23 @@ function AdminPage() {
               ) : (
                 <>
                   <div className="grid gap-3 sm:grid-cols-4">
-                    <AdminMetricCard
+                    <MetricCard
                       label="Volume aprovado"
                       value={formatCents(transactions.totals.gross)}
                       icon={DollarSign}
                       accent
                     />
-                    <AdminMetricCard
+                    <MetricCard
                       label="Líquido clientes"
                       value={formatCents(transactions.totals.net)}
                       icon={Wallet}
                     />
-                    <AdminMetricCard
+                    <MetricCard
                       label="Comissão"
                       value={formatCents(transactions.totals.commission)}
                       icon={Percent}
                     />
-                    <AdminMetricCard
+                    <MetricCard
                       label="Aprovadas"
                       value={transactions.totals.approvedCount.toString()}
                       icon={Ticket}
