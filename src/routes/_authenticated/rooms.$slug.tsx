@@ -32,6 +32,14 @@ import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { dispatchOverlayAlertTest } from "@/lib/overlay-alert-test";
 import { triggerOverlayAlertTest } from "@/lib/overlay-alert.functions";
 import { listRoomPayments } from "@/lib/payments.functions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/rooms/$slug")({
   head: () => ({ meta: [{ title: "Painel da sala | SongPIX" }] }),
@@ -39,6 +47,8 @@ export const Route = createFileRoute("/_authenticated/rooms/$slug")({
 });
 
 type Progress = { currentTime: number; duration: number };
+
+const ROOM_SPOTIFY_TIPS_STORAGE_KEY = "songpix-room-spotify-tips-seen";
 
 function fmtTime(totalSeconds: number) {
   if (!isFinite(totalSeconds) || totalSeconds < 0) return "0:00";
@@ -181,6 +191,7 @@ function RoomPanel() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [spotifyTipsOpen, setSpotifyTipsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -285,6 +296,20 @@ function RoomPanel() {
       window.removeEventListener("focus", onVisible);
     };
   }, [room]);
+
+  useEffect(() => {
+    if (!room || typeof window === "undefined") return;
+    if (!window.localStorage.getItem(ROOM_SPOTIFY_TIPS_STORAGE_KEY)) {
+      setSpotifyTipsOpen(true);
+    }
+  }, [room]);
+
+  function closeSpotifyTips() {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ROOM_SPOTIFY_TIPS_STORAGE_KEY, "1");
+    }
+    setSpotifyTipsOpen(false);
+  }
 
   async function toggleOpen() {
     if (!room) return;
@@ -468,6 +493,12 @@ function RoomPanel() {
               className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 border border-border bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon sm:min-h-0 sm:flex-none sm:justify-start sm:py-1.5"
             >
               <Monitor className="h-3 w-3" /> Overlay OBS/TikTok
+            </button>
+            <button
+              onClick={() => setSpotifyTipsOpen(true)}
+              className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 border border-border bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon sm:min-h-0 sm:flex-none sm:justify-start sm:py-1.5"
+            >
+              <Play className="h-3 w-3" /> Dicas Spotify
             </button>
             <button
               onClick={async () => {
@@ -1185,6 +1216,78 @@ function RoomPanel() {
           </section>
         )}
       </main>
+      <Dialog
+        open={spotifyTipsOpen}
+        onOpenChange={(open) => {
+          if (!open) closeSpotifyTips();
+          else setSpotifyTipsOpen(true);
+        }}
+      >
+        <DialogContent className="bg-surface border-border sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl font-bold italic uppercase tracking-tighter">
+              Dicas para tocar Spotify completo
+            </DialogTitle>
+            <DialogDescription>
+              O SongPIX usa o player oficial do Spotify. Para evitar preview curto, prepare o
+              navegador antes de iniciar a live.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-2">
+            <div className="flex gap-3 border border-border bg-background/40 p-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center bg-neon text-neon-foreground">
+                <ExternalLink className="h-4 w-4" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-display text-xs font-bold uppercase tracking-widest">
+                  Faça login no Spotify
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Abra o Spotify no mesmo navegador e entre na sua conta normal. Com a conta ativa,
+                  as músicas do Spotify podem tocar completas no player oficial, em vez de ficarem
+                  limitadas ao preview.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 border border-border bg-background/40 p-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center bg-neon text-neon-foreground">
+                <Play className="h-4 w-4" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-display text-xs font-bold uppercase tracking-widest">
+                  Deixe esta tela aberta
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Durante a live, mantenha o painel da sala aberto e clique no play da primeira
+                  música. Depois disso, o SongPIX consegue avançar pela fila automaticamente quando
+                  o player informar que a música terminou.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <a
+              href="https://open.spotify.com"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-1 rounded-md border border-neon bg-neon px-4 py-2 text-sm font-semibold text-neon-foreground hover:opacity-90"
+            >
+              <ExternalLink className="h-4 w-4" /> Abrir Spotify
+            </a>
+            <button
+              type="button"
+              onClick={closeSpotifyTips}
+              className="rounded-md border border-border bg-surface-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Entendi
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {overlayOpen && (
         <OverlayBuilder
           slug={slug}
