@@ -834,8 +834,13 @@ function RequestMusicEmptyState({
             Peça sua música
           </div>
         </div>
-        <div className="min-w-0 max-w-[210px] shrink-0 text-right font-mono text-[12px] font-black uppercase tracking-tight text-neon">
-          <div className="truncate">{publicUrlLabel}</div>
+        <div className="min-w-0 max-w-[230px] shrink-0 bg-neon px-3 py-2 text-right text-neon-foreground shadow-[4px_4px_0_rgba(0,0,0,0.45)]">
+          <div className="font-mono text-[8px] font-black uppercase tracking-[0.22em] opacity-75">
+            acesse
+          </div>
+          <div className="truncate font-mono text-[13px] font-black uppercase tracking-tight">
+            {publicUrlLabel}
+          </div>
         </div>
       </div>
     );
