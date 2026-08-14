@@ -823,11 +823,27 @@ function RequestMusicEmptyState({
   publicUrlLabel: string;
   compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div className="flex min-h-[88px] items-center justify-between gap-4 overflow-hidden px-1 py-2">
+        <div className="min-w-0">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+            Fila aberta
+          </div>
+          <div className="mt-1 font-display text-[32px] font-black italic uppercase leading-[0.86] tracking-[-0.07em] text-foreground">
+            Peça sua música
+          </div>
+        </div>
+        <div className="min-w-0 max-w-[210px] shrink-0 text-right font-mono text-[12px] font-black uppercase tracking-tight text-neon">
+          <div className="truncate">{publicUrlLabel}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`relative overflow-hidden border border-neon/40 bg-neon text-neon-foreground [--marquee-fade:var(--neon)] ${
-        compact ? "min-h-[118px] p-4" : "min-h-[156px] p-5"
-      }`}
+      className="relative min-h-[156px] overflow-hidden border border-neon/40 bg-neon p-5 text-neon-foreground [--marquee-fade:var(--neon)]"
     >
       <div className="pointer-events-none absolute inset-0 opacity-30 [background:radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.55),transparent_24%),repeating-linear-gradient(135deg,rgba(0,0,0,0.1)_0_10px,transparent_10px_22px)]" />
       <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full border border-neon-foreground/30 animate-[pulse_2.4s_ease-in-out_infinite]" />
@@ -838,9 +854,7 @@ function RequestMusicEmptyState({
         </div>
         <div>
           <div
-            className={`font-display font-black italic uppercase leading-[0.82] tracking-[-0.08em] ${
-              compact ? "text-[38px]" : "text-[54px]"
-            }`}
+            className="font-display text-[54px] font-black italic uppercase leading-[0.82] tracking-[-0.08em]"
           >
             <span className="block">Peça sua</span>
             <span className="block text-neon-foreground/80">música</span>
