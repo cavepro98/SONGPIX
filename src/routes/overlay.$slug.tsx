@@ -441,7 +441,7 @@ function Overlay() {
                   </div>
                 </div>
               ) : (
-                <EmptyLine text="Aguardando música…" />
+                <RequestMusicEmptyState publicUrlLabel={publicUrlLabel} compact />
               )}
             </WidgetCard>
           )}
@@ -512,7 +512,7 @@ function Overlay() {
                     </div>
                   </div>
                 ) : (
-                  <EmptyLine text="Aguardando música…" />
+                  <RequestMusicEmptyState publicUrlLabel={publicUrlLabel} />
                 )}
 
                 {queueDisplay.length > 0 && (
@@ -813,5 +813,43 @@ function Thumb({ item, size }: { item: QueueItem; size: "sm" | "md" | "lg" }) {
 function EmptyLine({ text }: { text: string }) {
   return (
     <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{text}</div>
+  );
+}
+
+function RequestMusicEmptyState({
+  publicUrlLabel,
+  compact = false,
+}: {
+  publicUrlLabel: string;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden border border-neon/40 bg-neon text-neon-foreground [--marquee-fade:var(--neon)] ${
+        compact ? "min-h-[118px] p-4" : "min-h-[156px] p-5"
+      }`}
+    >
+      <div className="pointer-events-none absolute inset-0 opacity-30 [background:radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.55),transparent_24%),repeating-linear-gradient(135deg,rgba(0,0,0,0.1)_0_10px,transparent_10px_22px)]" />
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full border border-neon-foreground/30 animate-[pulse_2.4s_ease-in-out_infinite]" />
+      <div className="relative grid h-full gap-3">
+        <div className="inline-flex w-fit items-center gap-2 border border-neon-foreground/35 bg-neon-foreground/10 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.24em] text-neon-foreground/80">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neon-foreground" />
+          fila aberta
+        </div>
+        <div>
+          <div
+            className={`font-display font-black italic uppercase leading-[0.82] tracking-[-0.08em] ${
+              compact ? "text-[38px]" : "text-[54px]"
+            }`}
+          >
+            <span className="block">Peça sua</span>
+            <span className="block text-neon-foreground/80">música</span>
+          </div>
+          <div className="mt-3 truncate bg-neon-foreground px-3 py-2 font-mono text-[12px] font-black uppercase tracking-tight text-neon">
+            {publicUrlLabel}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

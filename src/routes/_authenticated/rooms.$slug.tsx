@@ -1244,9 +1244,18 @@ function RoomPanel() {
                   Faça login no Spotify
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Abra o Spotify no mesmo navegador e entre na sua conta normal. Com a conta ativa,
-                  as músicas do Spotify podem tocar completas no player oficial, em vez de ficarem
-                  limitadas ao preview.
+                  Abra o{" "}
+                  <a
+                    href="https://open.spotify.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-neon underline-offset-4 hover:underline"
+                  >
+                    Spotify
+                  </a>{" "}
+                  no mesmo navegador e entre na sua conta normal. Com a conta ativa, as músicas do
+                  Spotify podem tocar completas no player oficial, em vez de ficarem limitadas ao
+                  preview.
                 </p>
               </div>
             </div>
@@ -1269,14 +1278,6 @@ function RoomPanel() {
           </div>
 
           <DialogFooter>
-            <a
-              href="https://open.spotify.com"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center gap-1 rounded-md border border-neon bg-neon px-4 py-2 text-sm font-semibold text-neon-foreground hover:opacity-90"
-            >
-              <ExternalLink className="h-4 w-4" /> Abrir Spotify
-            </a>
             <button
               type="button"
               onClick={closeSpotifyTips}
