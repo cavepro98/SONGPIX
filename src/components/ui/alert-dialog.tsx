@@ -5,7 +5,27 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
-const AlertDialog = AlertDialogPrimitive.Root;
+type AlertDialogProps = React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Root>;
+
+function AlertDialog({ open, defaultOpen, onOpenChange, ...props }: AlertDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen ?? false);
+  const isControlled = open !== undefined;
+  const actualOpen = isControlled ? open : uncontrolledOpen;
+
+  useBodyScrollLock(Boolean(actualOpen));
+
+  return (
+    <AlertDialogPrimitive.Root
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={(nextOpen) => {
+        if (!isControlled) setUncontrolledOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+      }}
+      {...props}
+    />
+  );
+}
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
@@ -30,8 +50,6 @@ const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => {
-  useBodyScrollLock();
-
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />

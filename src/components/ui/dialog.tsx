@@ -7,7 +7,27 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
-const Dialog = DialogPrimitive.Root;
+type DialogProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>;
+
+function Dialog({ open, defaultOpen, onOpenChange, ...props }: DialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen ?? false);
+  const isControlled = open !== undefined;
+  const actualOpen = isControlled ? open : uncontrolledOpen;
+
+  useBodyScrollLock(Boolean(actualOpen));
+
+  return (
+    <DialogPrimitive.Root
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={(nextOpen) => {
+        if (!isControlled) setUncontrolledOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+      }}
+      {...props}
+    />
+  );
+}
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
@@ -34,8 +54,6 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => {
-  useBodyScrollLock();
-
   return (
     <DialogPortal>
       <DialogOverlay />
