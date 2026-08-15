@@ -18,6 +18,7 @@ import {
   SkipForward,
   Star,
   Trash2,
+  Volume2,
   Wallet,
   X,
   Zap,
@@ -59,10 +60,12 @@ function fmtTime(totalSeconds: number) {
 
 function OwnerPlayer({
   item,
+  volume,
   onEnded,
   onProgress,
 }: {
   item: QueueItem;
+  volume: number;
   onEnded?: () => void;
   onProgress?: (p: Progress) => void;
 }) {
@@ -116,7 +119,13 @@ function OwnerPlayer({
     );
   }
   return (
-    <MusicPlayer url={resolvedUrl} source={item.source} onEnded={onEnded} onProgress={onProgress} />
+    <MusicPlayer
+      url={resolvedUrl}
+      source={item.source}
+      volume={volume}
+      onEnded={onEnded}
+      onProgress={onProgress}
+    />
   );
 }
 
@@ -192,6 +201,12 @@ function RoomPanel() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [spotifyTipsOpen, setSpotifyTipsOpen] = useState(false);
+  const [masterVolume, setMasterVolume] = useState(() => {
+    if (typeof window === "undefined") return 0.85;
+    const stored = window.localStorage.getItem(`songpix-room-volume:${slug}`);
+    const parsed = stored ? Number(stored) : NaN;
+    return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.85;
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -296,6 +311,11 @@ function RoomPanel() {
       window.removeEventListener("focus", onVisible);
     };
   }, [room]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(`songpix-room-volume:${slug}`, String(masterVolume));
+  }, [masterVolume, slug]);
 
   useEffect(() => {
     if (!room || typeof window === "undefined") return;
@@ -572,6 +592,31 @@ function RoomPanel() {
                 {formatCents(totalCents)}
               </div>
             </div>
+            <div className="w-full min-w-[210px] border border-border bg-surface/60 px-3 py-2">
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <Volume2 className="h-3 w-3 text-neon" />
+                  Volume geral
+                </div>
+                <span className="font-mono text-[10px] font-bold tabular-nums text-neon">
+                  {Math.round(masterVolume * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(masterVolume * 100)}
+                onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
+                className="h-1.5 w-full cursor-pointer accent-neon"
+                aria-label="Volume geral da sala"
+              />
+              {playing?.source?.toLowerCase() === "spotify" && (
+                <p className="mt-1 font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
+                  Spotify usa o volume do player oficial
+                </p>
+              )}
+            </div>
             <button
               onClick={toggleOpen}
               className={`px-3 py-2 font-display text-[10px] font-bold uppercase tracking-widest ${
@@ -732,6 +777,7 @@ function RoomPanel() {
               </div>
               <OwnerPlayer
                 item={playing}
+                volume={masterVolume}
                 onEnded={() => playedAndNext(playing.id)}
                 onProgress={setProgress}
               />

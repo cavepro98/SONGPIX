@@ -5,6 +5,7 @@ type Progress = { currentTime: number; duration: number };
 type Props = {
   url: string;
   source: string;
+  volume?: number;
   onEnded?: () => void;
   onProgress?: (p: Progress) => void;
 };
@@ -41,13 +42,13 @@ function spotifyEmbed(url: string): string | null {
   }
 }
 
-export function MusicPlayer({ url, source, onEnded, onProgress }: Props) {
+export function MusicPlayer({ url, source, volume = 1, onEnded, onProgress }: Props) {
   const src = source.toLowerCase();
 
   if (src === "youtube") {
     const id = ytId(url);
     if (!id) return <Fallback url={url} />;
-    return <YouTubePlayer id={id} onEnded={onEnded} onProgress={onProgress} />;
+    return <YouTubePlayer id={id} volume={volume} onEnded={onEnded} onProgress={onProgress} />;
   }
 
   if (src === "spotify") {
@@ -57,49 +58,88 @@ export function MusicPlayer({ url, source, onEnded, onProgress }: Props) {
   }
 
   if (src === "soundcloud") {
-    return <SoundCloudPlayer url={url} onEnded={onEnded} onProgress={onProgress} />;
+    return (
+      <SoundCloudPlayer url={url} volume={volume} onEnded={onEnded} onProgress={onProgress} />
+    );
   }
 
   if (src === "upload" || src === "audio" || src === "file") {
     return (
-      <div className="border border-border bg-black p-3">
-        <audio
-          controls
-          autoPlay
-          preload="metadata"
-          src={url}
-          className="block h-12 w-full"
-          onEnded={onEnded}
-          onTimeUpdate={(e) => {
-            const a = e.currentTarget;
-            if (a.duration) onProgress?.({ currentTime: a.currentTime, duration: a.duration });
-          }}
-          onLoadedMetadata={(e) => {
-            const a = e.currentTarget;
-            if (a.duration) onProgress?.({ currentTime: a.currentTime, duration: a.duration });
-          }}
-        />
-      </div>
+      <AudioPlayer url={url} volume={volume} onEnded={onEnded} onProgress={onProgress} />
     );
   }
 
   return <Fallback url={url} />;
 }
 
+function AudioPlayer({
+  url,
+  volume,
+  onEnded,
+  onProgress,
+}: {
+  url: string;
+  volume: number;
+  onEnded?: () => void;
+  onProgress?: (p: Progress) => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
+
+  return (
+    <div className="border border-border bg-black p-3">
+      <audio
+        ref={audioRef}
+        controls
+        autoPlay
+        preload="metadata"
+        src={url}
+        className="block h-12 w-full"
+        onEnded={onEnded}
+        onTimeUpdate={(e) => {
+          const a = e.currentTarget;
+          if (a.duration) onProgress?.({ currentTime: a.currentTime, duration: a.duration });
+        }}
+        onLoadedMetadata={(e) => {
+          const a = e.currentTarget;
+          a.volume = volume;
+          if (a.duration) onProgress?.({ currentTime: a.currentTime, duration: a.duration });
+        }}
+      />
+    </div>
+  );
+}
+
 function YouTubePlayer({
   id,
+  volume,
   onEnded,
   onProgress,
 }: {
   id: string;
+  volume: number;
   onEnded?: () => void;
   onProgress?: (p: Progress) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+  const volumeRef = useRef(volume);
   const endedRef = useRef(onEnded);
   const progressRef = useRef(onProgress);
+  volumeRef.current = volume;
   endedRef.current = onEnded;
   progressRef.current = onProgress;
+
+  useEffect(() => {
+    try {
+      playerRef.current?.setVolume?.(Math.round(volume * 100));
+    } catch {
+      /* ignore */
+    }
+  }, [volume]);
 
   useEffect(() => {
     let player: any = null;
@@ -131,7 +171,9 @@ function YouTubePlayer({
         playerVars: { autoplay: 1, playsinline: 1 },
         events: {
           onReady: (e: any) => {
+            playerRef.current = e.target;
             try {
+              e.target.setVolume?.(Math.round(volumeRef.current * 100));
               e.target.playVideo();
             } catch {
               /* ignore */
@@ -160,6 +202,7 @@ function YouTubePlayer({
       if (pollId) clearInterval(pollId);
       try {
         player?.destroy?.();
+        playerRef.current = null;
       } catch {
         /* ignore */
       }
@@ -175,16 +218,31 @@ function YouTubePlayer({
 
 function SoundCloudPlayer({
   url,
+  volume,
   onEnded,
   onProgress,
 }: {
   url: string;
+  volume: number;
   onEnded?: () => void;
   onProgress?: (p: Progress) => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const volumeRef = useRef(volume);
+  const widgetRef = useRef<{
+    setVolume?: (volume: number) => void;
+  } | null>(null);
   const endedRef = useRef(onEnded);
+  volumeRef.current = volume;
   endedRef.current = onEnded;
+
+  useEffect(() => {
+    try {
+      widgetRef.current?.setVolume?.(Math.round(volume * 100));
+    } catch {
+      /* ignore */
+    }
+  }, [volume]);
 
   useEffect(() => {
     let widget: {
@@ -192,6 +250,7 @@ function SoundCloudPlayer({
       unbind: (e: string) => void;
       getPosition: (cb: (pos: number) => void) => void;
       getDuration: (cb: (dur: number) => void) => void;
+      setVolume: (volume: number) => void;
     } | null = null;
 
     function ensureApi(): Promise<void> {
@@ -223,6 +282,8 @@ function SoundCloudPlayer({
         SC: { Widget: ((el: HTMLIFrameElement) => typeof widget) & { Events: { FINISH: string } } };
       };
       widget = w.SC.Widget(iframeRef.current);
+      widgetRef.current = widget;
+      widget?.setVolume(Math.round(volumeRef.current * 100));
       widget?.bind(w.SC.Widget.Events.FINISH, () => endedRef.current?.());
 
       pollId = setInterval(() => {
@@ -242,6 +303,7 @@ function SoundCloudPlayer({
       try {
         const w = window as unknown as { SC?: { Widget: { Events: { FINISH: string } } } };
         if (widget && w.SC?.Widget?.Events?.FINISH) widget.unbind(w.SC.Widget.Events.FINISH);
+        widgetRef.current = null;
       } catch {
         /* ignore */
       }
