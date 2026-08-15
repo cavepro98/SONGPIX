@@ -40,6 +40,12 @@ export function enforceRateLimit(options: RateLimitOptions) {
   const ip = getClientIpFromRequest(request);
   const now = Date.now();
   const key = `${options.bucket}:${ip}`;
+
+  // Avoid retaining expired client keys indefinitely in long-lived instances.
+  for (const [storedKey, entry] of rateLimitStore) {
+    if (entry.resetAt <= now) rateLimitStore.delete(storedKey);
+  }
+
   const current = rateLimitStore.get(key);
 
   if (!current || current.resetAt <= now) {
@@ -56,12 +62,7 @@ export function enforceRateLimit(options: RateLimitOptions) {
 }
 
 function getPaymentStatusSecret(): string {
-  return (
-    process.env.PAYMENT_STATUS_SECRET ||
-    process.env.MP_WEBHOOK_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    ""
-  );
+  return process.env.PAYMENT_STATUS_SECRET || "";
 }
 
 export function createPaymentStatusToken(paymentId: string): string {

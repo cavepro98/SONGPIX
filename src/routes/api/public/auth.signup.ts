@@ -8,7 +8,7 @@ const METHODS = ["POST"];
 
 const SignupSchema = z.object({
   email: z.string().trim().email().max(160),
-  password: z.string().min(6).max(128),
+  password: z.string().min(10).max(128),
   displayName: z.string().trim().min(1).max(40),
 });
 

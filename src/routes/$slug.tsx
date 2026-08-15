@@ -12,20 +12,41 @@ import { toast } from "sonner";
 import { ListMusic, Zap, Plus, Star, Upload, Loader2 } from "lucide-react";
 import { SourceBadge } from "@/components/SourceBadge";
 import { Marquee } from "@/components/Marquee";
+import { PAGE_SIZE, Pagination, paginate } from "@/components/Pagination";
 import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
 import { useAnimatedSwap } from "@/hooks/use-animated-swap";
+import { getPublicRoomMeta } from "@/lib/public-settings.functions";
 
 export const Route = createFileRoute("/$slug")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `Fila ao vivo | ${params.slug} · SongPIX` },
-      {
-        name: "description",
-        content: "Mande sua música pra fila dessa live. Quem paga mais sobe.",
-      },
-    ],
-  }),
+  loader: async ({ params }) => {
+    try {
+      return await getPublicRoomMeta({ data: params.slug });
+    } catch {
+      return null;
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const roomName = loaderData?.name ?? params.slug;
+    const description =
+      loaderData?.description ??
+      `Peça sua música na sala ${roomName} e acompanhe a fila ao vivo no SongPIX.`;
+    const canonical = `https://songpix.app/${encodeURIComponent(params.slug)}`;
+    return {
+      meta: [
+        { title: `${roomName} | Fila de músicas ao vivo · SongPIX` },
+        { name: "description", content: description },
+        { property: "og:title", content: `${roomName} | SongPIX` },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: canonical },
+        ...(loaderData?.cover_url?.startsWith("http")
+          ? [{ property: "og:image", content: loaderData.cover_url }]
+          : []),
+      ],
+      links: [{ rel: "canonical", href: canonical }],
+    };
+  },
   component: ViewerRoom,
 });
 
@@ -57,10 +78,29 @@ type QueueItem = {
   paid_amount_cents: number;
   status: string;
   created_at: string;
+  duration_sec: number | null;
   is_top: boolean;
   manual_order: number | null;
   played_at?: string | null;
 };
+
+type PlayerProgressPayload = {
+  itemId: string;
+  currentTime: number;
+  duration: number;
+};
+
+type PublicRoomResponse = {
+  room: Room;
+  items: QueueItem[];
+  history: QueueItem[];
+};
+
+async function fetchPublicRoom(slug: string): Promise<PublicRoomResponse | null> {
+  const response = await fetch(`/api/public/rooms/${encodeURIComponent(slug)}`);
+  if (!response.ok) return null;
+  return (await response.json()) as PublicRoomResponse;
+}
 
 function sortQueue(items: QueueItem[]) {
   return [...items].sort((a, b) => {
@@ -82,6 +122,21 @@ function formatCents(c: number) {
 
 function formatInputCents(cents: number) {
   return (cents / 100).toFixed(2).replace(".", ",");
+}
+
+function formatTime(totalSeconds: number) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "--:--";
+  const rounded = Math.round(totalSeconds);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const seconds = rounded % 60;
+  return hours > 0
+    ? `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+    : `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatRemainingTime(currentTime: number, duration: number) {
+  return duration > 0 ? `-${formatTime(Math.max(0, duration - currentTime))}` : "--:--";
 }
 
 function parseCurrencyCents(value: string) {
@@ -146,6 +201,7 @@ function ViewerRoom() {
   const [boostLimits, setBoostLimits] = useState<BoostLimits>(DEFAULT_BOOST_LIMITS);
   const coverUrl = useCoverUrl(room?.cover_url ?? null);
   const [items, setItems] = useState<QueueItem[]>([]);
+  const [playerProgress, setPlayerProgress] = useState<PlayerProgressPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -158,6 +214,7 @@ function ViewerRoom() {
   const [trackTitle, setTrackTitle] = useState("");
   const [tab, setTab] = useState<"queue" | "top" | "history">("queue");
   const [history, setHistory] = useState<QueueItem[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
 
   useEffect(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("songpix_name") : "";
@@ -173,15 +230,8 @@ function ViewerRoom() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [roomResult, limits] = await Promise.all([
-        supabase
-          .from("rooms")
-          .select(
-            "id, slug, name, description, cover_url, is_open, min_boost_cents, max_boost_cents, allow_upload, require_payment",
-          )
-          .eq("slug", slug)
-          .is("archived_at", null)
-          .maybeSingle(),
+      const [publicRoom, limits] = await Promise.all([
+        fetchPublicRoom(slug),
         fetch("/api/public/app-config")
           .then((r) => (r.ok ? r.json() : null))
           .then((config) => {
@@ -200,25 +250,11 @@ function ViewerRoom() {
       ]);
       if (!mounted) return;
       setBoostLimits(limits);
-      const roomWithLimits = normalizeRoomBoostLimits((roomResult.data as Room | null) ?? null, limits);
+      const roomWithLimits = normalizeRoomBoostLimits(publicRoom?.room ?? null, limits);
       setRoom(roomWithLimits);
       if (roomWithLimits) {
-        const { data: q } = await supabase
-          .from("queue_items")
-          .select("*")
-          .eq("room_id", roomWithLimits.id)
-          .in("status", ["queued", "playing"]);
-        if (!mounted) return;
-        setItems(sortQueue((q ?? []) as QueueItem[]));
-        const { data: h } = await supabase
-          .from("queue_items")
-          .select("*")
-          .eq("room_id", roomWithLimits.id)
-          .in("status", ["played", "skipped"])
-          .order("played_at", { ascending: false })
-          .limit(50);
-        if (!mounted) return;
-        setHistory((h ?? []) as QueueItem[]);
+        setItems(sortQueue(publicRoom?.items ?? []));
+        setHistory(publicRoom?.history ?? []);
       }
       setLoading(false);
     })();
@@ -228,79 +264,35 @@ function ViewerRoom() {
   }, [slug]);
 
   useEffect(() => {
-    if (!room) return;
-    const roomId = room.id;
+    const roomId = room?.id;
+    if (!roomId) return;
     async function refetch() {
-      const { data: q } = await supabase
-        .from("queue_items")
-        .select("*")
-        .eq("room_id", roomId)
-        .in("status", ["queued", "playing"]);
-      setItems(sortQueue((q ?? []) as QueueItem[]));
-      const { data: h } = await supabase
-        .from("queue_items")
-        .select("*")
-        .eq("room_id", roomId)
-        .in("status", ["played", "skipped"])
-        .order("played_at", { ascending: false })
-        .limit(50);
-      setHistory((h ?? []) as QueueItem[]);
+      const data = await fetchPublicRoom(slug);
+      if (!data) {
+        setRoom(null);
+        return;
+      }
+      setRoom((current) => (current ? normalizeRoomBoostLimits(data.room, boostLimits) : current));
+      setItems(sortQueue(data.items));
+      setHistory(data.history);
     }
     const channel = supabase
-      .channel(`viewer-room-${roomId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rooms", filter: `id=eq.${roomId}` },
-        (payload) => {
-          if (payload.eventType === "DELETE") {
-            setRoom(null);
-            return;
-          }
-          setRoom((r) =>
-            normalizeRoomBoostLimits(
-              r ? { ...r, ...(payload.new as Room) } : (payload.new as Room),
-              boostLimits,
-            ),
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "queue_items", filter: `room_id=eq.${roomId}` },
-        (payload) => {
-          if (payload.eventType === "UPDATE") {
-            const next = payload.new as QueueItem;
-            if (next.status === "played" || next.status === "skipped") {
-              setHistory((h) => [next, ...h.filter((i) => i.id !== next.id)].slice(0, 50));
-            }
-          }
-          setItems((prev) => {
-            if (payload.eventType === "INSERT") {
-              return sortQueue(
-                [...prev, payload.new as QueueItem].filter((i) =>
-                  ["queued", "playing"].includes(i.status),
-                ),
-              );
-            }
-            if (payload.eventType === "UPDATE") {
-              return sortQueue(
-                prev
-                  .map((i) =>
-                    i.id === (payload.new as QueueItem).id ? (payload.new as QueueItem) : i,
-                  )
-                  .filter((i) => ["queued", "playing"].includes(i.status)),
-              );
-            }
-            if (payload.eventType === "DELETE") {
-              return prev.filter((i) => i.id !== (payload.old as QueueItem).id);
-            }
-            return prev;
-          });
-        },
-      )
+      .channel(`room-${roomId}`)
+      .on("broadcast", { event: "player-progress" }, ({ payload }) => {
+        const next = payload as Partial<PlayerProgressPayload>;
+        if (
+          typeof next.itemId === "string" &&
+          typeof next.currentTime === "number" &&
+          typeof next.duration === "number"
+        ) {
+          setPlayerProgress(next as PlayerProgressPayload);
+        }
+      })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") refetch();
       });
+
+    const refreshTimer = window.setInterval(refetch, 5_000);
 
     function onVisible() {
       if (document.visibilityState === "visible") refetch();
@@ -308,11 +300,21 @@ function ViewerRoom() {
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     return () => {
+      window.clearInterval(refreshTimer);
       supabase.removeChannel(channel);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, [room]);
+  }, [boostLimits, room?.id, slug]);
+
+  useEffect(() => {
+    const playingId = items.find((item) => item.status === "playing")?.id;
+    setPlayerProgress((current) => (current && current.itemId === playingId ? current : null));
+  }, [items]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [history.length]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -482,16 +484,12 @@ function ViewerRoom() {
         <div className="pointer-events-none absolute -left-24 top-16 h-56 w-56 rounded-full bg-neon/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-20 bottom-12 h-64 w-64 rounded-full bg-neon/10 blur-3xl" />
 
-        <div className="relative w-full max-w-sm animate-[soft-in_0.8s_ease-out_both] border border-border bg-surface/90 p-6 text-center shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur">
-          <div className="mx-auto grid h-14 w-14 place-items-center bg-neon text-neon-foreground shadow-neon">
+        <div className="app-panel relative w-full max-w-sm animate-[soft-in_0.8s_ease-out_both] p-6 text-center backdrop-blur">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-neon text-neon-foreground shadow-neon">
             <ListMusic className="h-7 w-7" />
           </div>
-          <div className="mt-5 font-mono text-[10px] font-bold uppercase tracking-[0.32em] text-neon">
-            abrindo sala
-          </div>
-          <h1 className="mt-2 truncate font-display text-3xl font-black uppercase tracking-tighter">
-            {slug}
-          </h1>
+          <div className="eyebrow mt-5">abrindo sala</div>
+          <h1 className="mt-2 truncate text-2xl font-bold tracking-tight">{slug}</h1>
           <p className="mt-2 text-sm font-medium text-muted-foreground">
             Sincronizando fila, música atual e pedidos da live.
           </p>
@@ -507,7 +505,7 @@ function ViewerRoom() {
               />
             ))}
           </div>
-          <div className="mt-5 inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <div className="mt-5 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-neon" />
             preparando experiência
           </div>
@@ -527,6 +525,13 @@ function ViewerRoom() {
   }
 
   const playing = animatedPlaying;
+  const displayedProgress =
+    playing && playerProgress?.itemId === playing.id
+      ? playerProgress
+      : {
+          currentTime: 0,
+          duration: playing?.duration_sec ?? 0,
+        };
   const queuedItems = items.filter((i) => i.status === "queued");
   const topItems = sortQueue(
     items.filter((i) => i.is_top && (i.status === "queued" || i.status === "playing")),
@@ -537,6 +542,7 @@ function ViewerRoom() {
     [...items]
       .filter((i) => (i.status === "queued" || i.status === "playing") && i.paid_amount_cents > 0)
       .sort((a, b) => b.paid_amount_cents - a.paid_amount_cents)[0] ?? null;
+  const pagedHistory = paginate(history, historyPage);
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -548,30 +554,29 @@ function ViewerRoom() {
           backgroundSize: "240px 240px",
         }}
       />
-      <div className="relative z-10 mx-auto w-full max-w-6xl overflow-hidden border-x border-border/40 bg-surface/60 backdrop-blur-[1px]">
-        <div className="flex flex-col md:flex-row">
+      <div className="relative z-10 mx-auto w-full max-w-7xl p-3 sm:p-5 lg:p-6">
+        <div className="app-panel flex flex-col overflow-hidden md:flex-row">
           {/* LEFT — Queue Control */}
-          <div className="relative min-w-0 flex-1 border-b-2 border-border p-6 sm:p-8 md:border-b-0 md:border-r-2">
-            {/* Console header */}
-            <header className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
-              <div className="flex min-w-0 items-start gap-4">
+          <div className="relative min-w-0 flex-1 border-b border-border p-4 sm:p-6 md:border-b-0 md:border-r">
+            <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                 {coverUrl ? (
                   <img
                     src={coverUrl}
                     alt=""
-                    className="h-20 w-20 shrink-0 border border-border object-cover sm:h-24 sm:w-24"
+                    className="h-16 w-16 shrink-0 rounded-xl border border-border object-cover sm:h-20 sm:w-20"
                   />
                 ) : (
-                  <div className="grid h-20 w-20 shrink-0 place-items-center border border-dashed border-border bg-surface-2 sm:h-24 sm:w-24">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-dashed border-border bg-surface-2 sm:h-20 sm:w-20">
                     <ListMusic className="h-6 w-6 text-muted-foreground/60" />
                   </div>
                 )}
                 <div className="min-w-0 space-y-1">
-                  <h1 className="truncate font-display text-3xl font-extrabold italic uppercase leading-none tracking-tighter sm:text-4xl">
+                  <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
                     {room.name}
                   </h1>
-                  <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                    Estação · {room.slug}
+                  <span className="block text-xs font-medium text-neon">
+                    songpix.app/{room.slug}
                   </span>
                   {room.description && (
                     <p className="line-clamp-2 max-w-prose pt-1 text-sm text-muted-foreground">
@@ -580,28 +585,26 @@ function ViewerRoom() {
                   )}
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      room.is_open
-                        ? "animate-pulse bg-neon shadow-[0_0_10px_var(--neon)]"
-                        : "bg-muted-foreground"
-                    }`}
-                  />
-                  <span className="font-display text-xs font-bold uppercase tracking-widest">
-                    {room.is_open ? "Sinal Online" : "Fechada"}
-                  </span>
-                </div>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  FURA FILA MÍN: {formatCents(room.min_boost_cents)}
+              <div className="flex shrink-0 items-center gap-2 self-start rounded-full border border-border bg-surface-2 px-3 py-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    room.is_open
+                      ? "animate-pulse bg-neon shadow-[0_0_10px_var(--neon)]"
+                      : "bg-muted-foreground"
+                  }`}
+                />
+                <span className="text-xs font-semibold">
+                  {room.is_open ? "Sala aberta" : "Sala fechada"}
                 </span>
               </div>
             </header>
 
             {/* Submit form */}
             {room.is_open && (
-              <form onSubmit={handleSubmit} className="mb-8 border border-border bg-black/40 p-4">
+              <form
+                onSubmit={handleSubmit}
+                className="mb-8 w-full border border-border bg-black/40 p-4"
+              >
                 <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
                   <h2 className="font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Pedir Música
@@ -622,8 +625,8 @@ function ViewerRoom() {
                     {highestPaidItem && (
                       <p className="mt-2 text-xs text-muted-foreground">
                         {highestPaidItem.submitter_name} fez o maior donate da sala:{" "}
-                        {formatCents(highestPaidItem.paid_amount_cents)}. Quer ficar na frente?
-                        Faça um donate acima desse valor.
+                        {formatCents(highestPaidItem.paid_amount_cents)}. Quer ficar na frente? Faça
+                        um donate acima desse valor.
                       </p>
                     )}
                   </div>
@@ -811,7 +814,7 @@ function ViewerRoom() {
             )}
 
             {/* Tabs */}
-            <div className="mb-4 inline-flex flex-wrap border border-border bg-black/40">
+            <div className="mb-5 inline-flex w-fit max-w-full overflow-x-auto bg-surface-2/70 p-1">
               {(["queue", "top", "history"] as const).map((t) => {
                 const count =
                   t === "queue"
@@ -824,14 +827,14 @@ function ViewerRoom() {
                     key={t}
                     type="button"
                     onClick={() => setTab(t)}
-                    className={`px-4 py-2 font-display text-[10px] font-bold uppercase tracking-widest transition ${
+                    className={`min-h-9 shrink-0 rounded-lg px-3 text-xs font-semibold transition sm:px-4 ${
                       tab === t
                         ? "bg-neon text-neon-foreground"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {t === "queue" ? "Fila" : t === "top" ? "★ Top" : "Histórico"}
-                    <span className="ml-2 font-mono text-[9px] opacity-70">
+                    <span className="ml-1.5 text-[10px] opacity-70">
                       {count.toString().padStart(2, "0")}
                     </span>
                   </button>
@@ -854,10 +857,13 @@ function ViewerRoom() {
                 {playing ? (
                   <div
                     key={playing.id}
-                    className={`relative flex items-center gap-5 overflow-hidden bg-neon p-5 text-neon-foreground [--marquee-fade:var(--neon)] ${playingLeaving ? "animate-[soft-out_0.9s_cubic-bezier(0.4,0,0.2,1)_both]" : "animate-[soft-in_1.4s_cubic-bezier(0.22,1,0.36,1)_both]"}`}
+                    className={`relative flex items-center gap-4 overflow-hidden rounded-xl bg-neon p-4 text-neon-foreground [--marquee-fade:var(--neon)] sm:p-5 ${playingLeaving ? "animate-[soft-out_0.9s_cubic-bezier(0.4,0,0.2,1)_both]" : "animate-[soft-in_1.4s_cubic-bezier(0.22,1,0.36,1)_both]"}`}
                   >
-                    <div className="absolute right-0 top-0 bg-neon-foreground px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
-                      No Ar
+                    <div className="absolute right-0 top-0 z-20 bg-background px-2 py-1 font-mono text-[10px] font-bold tabular-nums tracking-wider text-neon">
+                      {formatRemainingTime(
+                        displayedProgress.currentTime,
+                        displayedProgress.duration,
+                      )}
                     </div>
                     {playing.is_top && (
                       <div className="absolute left-0 top-0 inline-flex items-center gap-1 bg-background px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-tighter text-neon">
@@ -882,7 +888,7 @@ function ViewerRoom() {
                       </p>
                       <Marquee
                         className="font-display text-lg font-bold tracking-tight sm:text-xl"
-                        speed={45}
+                        speed={26}
                       >
                         {playing.title}
                       </Marquee>
@@ -990,7 +996,7 @@ function ViewerRoom() {
                     queue.map((item, idx) => (
                       <div
                         key={item.id}
-                        className={`border animate-[soft-in_0.9s_cubic-bezier(0.22,1,0.36,1)_both] ${"border-border bg-black/40"}`}
+                        className="border border-border bg-black/40 animate-[soft-in_0.9s_cubic-bezier(0.22,1,0.36,1)_both]"
                         style={{ animationDelay: `${idx * 90}ms` }}
                       >
                         <div className="flex items-center gap-3 p-3 sm:gap-5 sm:p-6">
@@ -1169,88 +1175,91 @@ function ViewerRoom() {
                     Nada tocado ainda
                   </div>
                 ) : (
-                  history.map((h, idx) => (
-                    <div
-                      key={h.id}
-                      className="flex items-center gap-3 border border-border bg-black/40 p-3 sm:p-4"
-                    >
-                      <span className="hidden w-8 shrink-0 text-center font-display text-xl font-bold tabular-nums text-muted-foreground/40 sm:block">
-                        {(idx + 1).toString().padStart(2, "0")}
-                      </span>
-                      {h.thumbnail_url ? (
-                        <img
-                          src={h.thumbnail_url}
-                          alt=""
-                          className="h-12 w-12 shrink-0 border border-border object-cover opacity-70"
-                        />
-                      ) : (
-                        <div className="grid h-12 w-12 shrink-0 place-items-center border border-border bg-surface-2">
-                          <ListMusic className="h-4 w-4 text-muted-foreground/60" />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <Marquee className="text-sm font-bold">{h.title}</Marquee>
-                        {h.artist && (
-                          <Marquee className="text-xs text-muted-foreground">{h.artist}</Marquee>
+                  <>
+                    {pagedHistory.map((h, idx) => (
+                      <div
+                        key={h.id}
+                        className="flex items-center gap-3 border border-border bg-black/40 p-3 sm:p-4"
+                      >
+                        <span className="hidden w-8 shrink-0 text-center font-display text-xl font-bold tabular-nums text-muted-foreground/40 sm:block">
+                          {((historyPage - 1) * PAGE_SIZE + idx + 1).toString().padStart(2, "0")}
+                        </span>
+                        {h.thumbnail_url ? (
+                          <img
+                            src={h.thumbnail_url}
+                            alt=""
+                            className="h-12 w-12 shrink-0 border border-border object-cover opacity-70"
+                          />
+                        ) : (
+                          <div className="grid h-12 w-12 shrink-0 place-items-center border border-border bg-surface-2">
+                            <ListMusic className="h-4 w-4 text-muted-foreground/60" />
+                          </div>
                         )}
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <SourceBadge source={h.source} />
-                          <div className="min-w-0 flex-1">
-                            <Marquee className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                              {h.submitter_name}
-                            </Marquee>
+                        <div className="min-w-0 flex-1">
+                          <Marquee className="text-sm font-bold">{h.title}</Marquee>
+                          {h.artist && (
+                            <Marquee className="text-xs text-muted-foreground">{h.artist}</Marquee>
+                          )}
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <SourceBadge source={h.source} />
+                            <div className="min-w-0 flex-1">
+                              <Marquee className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                                {h.submitter_name}
+                              </Marquee>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span
-                          className={`border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${
-                            h.status === "played"
-                              ? "border-neon/40 bg-neon/10 text-neon"
-                              : "border-border bg-surface-2 text-muted-foreground"
-                          }`}
-                        >
-                          {h.status === "played" ? "Tocou" : "Pulada"}
-                        </span>
-                        {h.played_at && (
-                          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                            {new Date(h.played_at).toLocaleTimeString("pt-BR", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <span
+                            className={`border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${
+                              h.status === "played"
+                                ? "border-neon/40 bg-neon/10 text-neon"
+                                : "border-border bg-surface-2 text-muted-foreground"
+                            }`}
+                          >
+                            {h.status === "played" ? "Tocou" : "Pulada"}
                           </span>
-                        )}
+                          {h.played_at && (
+                            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                              {new Date(h.played_at).toLocaleTimeString("pt-BR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    <Pagination
+                      page={historyPage}
+                      totalItems={history.length}
+                      onPageChange={setHistoryPage}
+                    />
+                  </>
                 )}
               </div>
             )}
           </div>
 
           {/* RIGHT — Metrics & Terminal */}
-          <aside className="w-full bg-surface-2 p-6 sm:p-8 md:w-80">
+          <aside className="w-full bg-surface-2/70 p-4 sm:p-5 md:w-72 lg:w-80">
             <section>
-              <h2 className="mb-6 border-l-2 border-neon pl-2 font-display text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Dados da Sessão
-              </h2>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="border border-border bg-background p-5">
-                  <span className="mb-2 block font-mono text-[10px] font-bold uppercase text-muted-foreground">
-                    Músicas na Fila
-                  </span>
+              <h2 className="section-title mb-4">Dados da Sessão</h2>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
+                <div className="app-card bg-background/70 p-4">
+                  <span className="mb-2 block text-xs text-muted-foreground">Músicas na Fila</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display text-4xl font-bold tabular-nums tracking-tighter">
+                    <span className="text-3xl font-bold tabular-nums tracking-tight">
                       {queue.length}
                     </span>
                   </div>
                 </div>
-                <div className="border border-border bg-background p-5">
-                  <span className="mb-2 block font-mono text-[10px] font-bold uppercase text-muted-foreground">
+                <div className="app-card bg-background/70 p-4">
+                  <span className="mb-2 block text-xs text-muted-foreground">
                     Fura filas ativos
                   </span>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display text-3xl font-bold tabular-nums tracking-tighter text-neon">
+                    <span className="text-3xl font-bold tabular-nums tracking-tight text-neon">
                       {items.filter((i) => i.paid_amount_cents > 0).length}
                     </span>
                   </div>
@@ -1258,11 +1267,9 @@ function ViewerRoom() {
               </div>
             </section>
 
-            <section className="mt-10">
-              <h2 className="mb-4 border-l-2 border-neon pl-2 font-display text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Top da Fila
-              </h2>
-              <div className="space-y-2 font-mono text-[10px] uppercase leading-tight text-muted-foreground">
+            <section className="mt-6">
+              <h2 className="section-title mb-3">Top da Fila</h2>
+              <div className="space-y-2 text-xs leading-tight text-muted-foreground">
                 {queue.slice(0, 5).map((it, i) => (
                   <p key={it.id} className="truncate">
                     <span
@@ -1279,7 +1286,7 @@ function ViewerRoom() {
               </div>
             </section>
 
-            <footer className="mt-10 flex items-center justify-between border-t border-border pt-6">
+            <footer className="mt-6 flex items-center justify-between border-t border-border pt-4">
               <div className="flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                 <ListMusic className="h-3 w-3" /> SongPIX
               </div>
@@ -1290,10 +1297,6 @@ function ViewerRoom() {
           </aside>
         </div>
       </div>
-
-      <p className="mx-auto mt-6 max-w-5xl text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        ⚡ Pagamentos PIX processados via Mercado Pago
-      </p>
 
       {pixTarget && room && (
         <PixCheckoutModal

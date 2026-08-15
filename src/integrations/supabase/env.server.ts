@@ -19,10 +19,5 @@ export function getSupabasePublishableKey() {
 }
 
 export function getSupabaseServiceRoleKey() {
-  return getFirstEnv(
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "SUPABASE_SECRET_KEY",
-    "SUPABASE_SECRET",
-    "VITE_SUPABASE_SERVICE_ROLE_KEY",
-  );
+  return getFirstEnv("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SECRET");
 }

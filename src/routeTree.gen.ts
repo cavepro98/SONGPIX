@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -20,10 +21,16 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as ApiPublicAppConfigRouteImport } from './routes/api/public/app-config'
 import { Route as AuthenticatedRoomsSlugRouteImport } from './routes/_authenticated/rooms.$slug'
 import { Route as ApiPublicWebhooksMercadopagoRouteImport } from './routes/api/public/webhooks.mercadopago'
+import { Route as ApiPublicRoomsSlugRouteImport } from './routes/api/public/rooms.$slug'
 import { Route as ApiPublicPaymentsCreateRouteImport } from './routes/api/public/payments.create'
 import { Route as ApiPublicAuthSignupRouteImport } from './routes/api/public/auth.signup'
 import { Route as ApiPublicPaymentsIdStatusRouteImport } from './routes/api/public/payments.$id.status'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -80,6 +87,11 @@ const ApiPublicWebhooksMercadopagoRoute =
     path: '/api/public/webhooks/mercadopago',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicRoomsSlugRoute = ApiPublicRoomsSlugRouteImport.update({
+  id: '/api/public/rooms/$slug',
+  path: '/api/public/rooms/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsCreateRoute = ApiPublicPaymentsCreateRouteImport.update({
   id: '/api/public/payments/create',
   path: '/api/public/payments/create',
@@ -101,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
@@ -109,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/api/public/app-config': typeof ApiPublicAppConfigRoute
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
+  '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
 }
@@ -116,6 +130,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
@@ -124,6 +139,7 @@ export interface FileRoutesByTo {
   '/api/public/app-config': typeof ApiPublicAppConfigRoute
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
+  '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
 }
@@ -133,6 +149,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/withdrawals': typeof AuthenticatedWithdrawalsRoute
@@ -141,6 +158,7 @@ export interface FileRoutesById {
   '/api/public/app-config': typeof ApiPublicAppConfigRoute
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
+  '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
 }
@@ -150,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
+    | '/sitemap.xml'
     | '/admin'
     | '/dashboard'
     | '/withdrawals'
@@ -158,6 +177,7 @@ export interface FileRouteTypes {
     | '/api/public/app-config'
     | '/api/public/auth/signup'
     | '/api/public/payments/create'
+    | '/api/public/rooms/$slug'
     | '/api/public/webhooks/mercadopago'
     | '/api/public/payments/$id/status'
   fileRoutesByTo: FileRoutesByTo
@@ -165,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
+    | '/sitemap.xml'
     | '/admin'
     | '/dashboard'
     | '/withdrawals'
@@ -173,6 +194,7 @@ export interface FileRouteTypes {
     | '/api/public/app-config'
     | '/api/public/auth/signup'
     | '/api/public/payments/create'
+    | '/api/public/rooms/$slug'
     | '/api/public/webhooks/mercadopago'
     | '/api/public/payments/$id/status'
   id:
@@ -181,6 +203,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/$slug'
     | '/auth'
+    | '/sitemap.xml'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/withdrawals'
@@ -189,6 +212,7 @@ export interface FileRouteTypes {
     | '/api/public/app-config'
     | '/api/public/auth/signup'
     | '/api/public/payments/create'
+    | '/api/public/rooms/$slug'
     | '/api/public/webhooks/mercadopago'
     | '/api/public/payments/$id/status'
   fileRoutesById: FileRoutesById
@@ -198,16 +222,25 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   SlugRoute: typeof SlugRoute
   AuthRoute: typeof AuthRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   OverlaySlugRoute: typeof OverlaySlugRoute
   ApiPublicAppConfigRoute: typeof ApiPublicAppConfigRoute
   ApiPublicAuthSignupRoute: typeof ApiPublicAuthSignupRoute
   ApiPublicPaymentsCreateRoute: typeof ApiPublicPaymentsCreateRoute
+  ApiPublicRoomsSlugRoute: typeof ApiPublicRoomsSlugRoute
   ApiPublicWebhooksMercadopagoRoute: typeof ApiPublicWebhooksMercadopagoRoute
   ApiPublicPaymentsIdStatusRoute: typeof ApiPublicPaymentsIdStatusRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -285,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksMercadopagoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/rooms/$slug': {
+      id: '/api/public/rooms/$slug'
+      path: '/api/public/rooms/$slug'
+      fullPath: '/api/public/rooms/$slug'
+      preLoaderRoute: typeof ApiPublicRoomsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/create': {
       id: '/api/public/payments/create'
       path: '/api/public/payments/create'
@@ -331,10 +371,12 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   SlugRoute: SlugRoute,
   AuthRoute: AuthRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   OverlaySlugRoute: OverlaySlugRoute,
   ApiPublicAppConfigRoute: ApiPublicAppConfigRoute,
   ApiPublicAuthSignupRoute: ApiPublicAuthSignupRoute,
   ApiPublicPaymentsCreateRoute: ApiPublicPaymentsCreateRoute,
+  ApiPublicRoomsSlugRoute: ApiPublicRoomsSlugRoute,
   ApiPublicWebhooksMercadopagoRoute: ApiPublicWebhooksMercadopagoRoute,
   ApiPublicPaymentsIdStatusRoute: ApiPublicPaymentsIdStatusRoute,
 }

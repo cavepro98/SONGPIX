@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { isSupabaseClientConfigured, supabase } from "@/integrations/supabase/client";
 import bgNoise from "@/assets/bg-noise.gif";
+import { getPublicSiteSettings } from "@/lib/public-settings.functions";
 
 type QueueTrack = { id: string; title: string; user: string; price: string; hot?: boolean };
 
@@ -35,25 +36,40 @@ const INITIAL_QUEUE: QueueTrack[] = [
 ];
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "SongPIX | fila de músicas pra suas lives" },
-      {
-        name: "description",
-        content:
-          "Crie uma sala para sua live, receba pedidos de música e permita apoios via PIX com fura fila.",
-      },
-      { property: "og:title", content: "SongPIX — pedidos de música com PIX para lives" },
-      {
-        property: "og:description",
-        content: "Sala pública, fila ao vivo, fura fila via PIX e overlays para streamers e DJs.",
-      },
-    ],
-  }),
+  loader: async () => {
+    try {
+      return await getPublicSiteSettings();
+    } catch {
+      return null;
+    }
+  },
+  head: ({ loaderData }) => {
+    const seo = loaderData;
+    if (!seo) return {};
+    const socialImage = seo.ogImageUrl
+      ? [
+          { property: "og:image", content: seo.ogImageUrl },
+          { name: "twitter:image", content: seo.ogImageUrl },
+        ]
+      : [];
+    return {
+      meta: [
+        { title: seo.title },
+        { name: "description", content: seo.description },
+        { name: "keywords", content: seo.keywords },
+        { property: "og:title", content: seo.title },
+        { property: "og:description", content: seo.description },
+        { property: "og:url", content: seo.canonicalUrl },
+        ...socialImage,
+      ],
+      links: [{ rel: "canonical", href: seo.canonicalUrl }],
+    };
+  },
   component: Landing,
 });
 
 function Landing() {
+  const seo = Route.useLoaderData();
   const navigate = useNavigate();
   useEffect(() => {
     if (!isSupabaseClientConfigured()) return;
@@ -133,19 +149,17 @@ function Landing() {
             <div className="mb-6 inline-flex items-center gap-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-neon shadow-[0_0_8px_var(--neon)]" />
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-neon">
-                Pedidos de música via PIX
+                {seo?.homeBadge ?? "Pedidos de música via PIX"}
               </span>
             </div>
 
             <h1 className="font-display text-5xl font-bold italic uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl">
-              Sua live com <br />
-              música, PIX e <span className="text-neon">fila ao vivo</span>.
+              {seo?.homeTitle ?? "Sua live com música, PIX e fila ao vivo."}
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground">
-              Crie uma sala, compartilhe o link com o público e receba pedidos de música em tempo
-              real. Quem quiser apoiar usa o Fura Fila via PIX para ganhar prioridade, enquanto
-              você mantém o controle do que entra, toca ou sai da fila.
+              {seo?.homeDescription ??
+                "Crie uma sala, compartilhe o link com o público e receba pedidos de música em tempo real. Quem quiser apoiar usa o Fura Fila via PIX para ganhar prioridade, enquanto você mantém o controle do que entra, toca ou sai da fila."}
             </p>
 
             <div className="mt-10 flex flex-wrap gap-3">
@@ -153,7 +167,7 @@ function Landing() {
                 to="/auth"
                 className="inline-flex items-center gap-2 border border-neon bg-neon px-8 py-4 font-display text-xs font-bold uppercase tracking-widest text-neon-foreground transition-all hover:opacity-90"
               >
-                Criar primeira sala <ArrowRight className="h-4 w-4" />
+                {seo?.homePrimaryCta ?? "Criar primeira sala"} <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/auth"
@@ -507,7 +521,8 @@ function Landing() {
           </h2>
           <p className="mb-12 max-w-xl text-sm leading-relaxed text-muted-foreground">
             Não cobramos mensalidade. SongPIX é gratuito pra criar salas e receber músicas. Quando
-            alguém usar o fura fila, você recebe o valor e a gente fica com uma pequena taxa de operação.
+            alguém usar o fura fila, você recebe o valor e a gente fica com uma pequena taxa de
+            operação.
           </p>
 
           <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
@@ -535,8 +550,9 @@ function Landing() {
                 Fura Fila & Monetização
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Você define o valor mínimo do fura fila. Quanto mais o viewer paga, mais alto sobe na
-                fila. Os apoios ficam registrados no painel para acompanhar ganhos e solicitar saque.
+                Você define o valor mínimo do fura fila. Quanto mais o viewer paga, mais alto sobe
+                na fila. Os apoios ficam registrados no painel para acompanhar ganhos e solicitar
+                saque.
               </p>
               <ul className="mt-6 space-y-3">
                 {[

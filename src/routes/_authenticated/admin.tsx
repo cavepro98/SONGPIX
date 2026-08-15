@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Pagination, paginate } from "@/components/Pagination";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import bgNoise from "@/assets/bg-noise.gif";
 import {
   ArrowLeft,
   ShieldAlert,
@@ -215,6 +217,11 @@ function AdminPage() {
   const [settings, setSettings] = useState<any>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [roomsPage, setRoomsPage] = useState(1);
+  const [queuePage, setQueuePage] = useState(1);
+  const [usersPage, setUsersPage] = useState(1);
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [withdrawalsPage, setWithdrawalsPage] = useState(1);
   useBodyScrollLock(!!editingUser);
 
   const fetchUsers = useServerFn(listAdminUsers);
@@ -460,6 +467,15 @@ function AdminPage() {
           allow_signups: !!settings.allow_signups,
           maintenance_mode: !!settings.maintenance_mode,
           support_email: settings.support_email ?? "",
+          seo_title: settings.seo_title,
+          seo_description: settings.seo_description,
+          seo_keywords: settings.seo_keywords ?? "",
+          seo_canonical_url: settings.seo_canonical_url,
+          seo_og_image_url: settings.seo_og_image_url ?? "",
+          home_badge: settings.home_badge,
+          home_title: settings.home_title,
+          home_description: settings.home_description,
+          home_primary_cta: settings.home_primary_cta,
         },
       });
       toast.success("Configurações salvas");
@@ -492,6 +508,26 @@ function AdminPage() {
     if (tab !== "transactions" || !isAdmin) return;
     loadTransactions();
   }, [tab, isAdmin]);
+
+  useEffect(() => {
+    setRoomsPage(1);
+  }, [rooms.length]);
+
+  useEffect(() => {
+    setQueuePage(1);
+  }, [items.length]);
+
+  useEffect(() => {
+    setUsersPage(1);
+  }, [users.length, userSearch]);
+
+  useEffect(() => {
+    setTransactionsPage(1);
+  }, [transactions?.payments.length]);
+
+  useEffect(() => {
+    setWithdrawalsPage(1);
+  }, [withdrawals.length]);
 
   async function toggleRoom(room: Room) {
     const { error } = await supabase
@@ -580,6 +616,17 @@ function AdminPage() {
     { id: "settings" as const, label: "Configurações", icon: Settings, count: null },
   ];
 
+  const filteredUsers = users.filter((u) => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return true;
+    return u.email.toLowerCase().includes(q) || (u.display_name ?? "").toLowerCase().includes(q);
+  });
+  const pagedRooms = paginate(rooms, roomsPage);
+  const pagedItems = paginate(items, queuePage);
+  const pagedUsers = paginate(filteredUsers, usersPage);
+  const pagedTransactions = paginate(transactions?.payments ?? [], transactionsPage);
+  const pagedWithdrawals = paginate(withdrawals, withdrawalsPage);
+
   async function handleUpdateW(id: string, status: "approved" | "rejected" | "paid") {
     const notes =
       status === "rejected" ? (prompt("Motivo da rejeição (opcional):") ?? undefined) : undefined;
@@ -594,20 +641,30 @@ function AdminPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="relative flex min-h-screen bg-background text-foreground">
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.35] mix-blend-overlay"
+        style={{
+          backgroundImage: `url(${bgNoise})`,
+          backgroundRepeat: "repeat",
+          backgroundSize: "240px 240px",
+        }}
+      />
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-border bg-surface/80 backdrop-blur transition-transform duration-200 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-border bg-surface-2/95 backdrop-blur-xl transition-transform duration-200 lg:static lg:translate-x-0 ${
           navOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex h-16 items-center justify-between border-b border-border px-5">
           <Link
             to="/dashboard"
             className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>SongPIX</span>
+            <span className="brand-font font-bold">
+              Song<span className="text-neon">PIX</span>
+            </span>
           </Link>
           <span className="rounded-full border border-neon/40 bg-neon/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neon">
             admin
@@ -632,7 +689,7 @@ function AdminPage() {
                 }}
                 className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
                   active
-                    ? "bg-neon text-neon-foreground"
+                    ? "bg-neon/10 text-neon ring-1 ring-inset ring-neon/20"
                     : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
                 }`}
               >
@@ -664,25 +721,29 @@ function AdminPage() {
       )}
 
       {/* Main column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-border bg-surface/60 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-xl lg:px-6">
           <button
             onClick={() => setNavOpen(true)}
-            className="rounded-md border border-border p-2 text-muted-foreground hover:text-foreground"
+            className="rounded-lg border border-border p-2 text-muted-foreground hover:text-foreground lg:hidden"
             aria-label="Abrir menu"
           >
             <Menu className="h-4 w-4" />
           </button>
-          <h1 className="font-display text-sm font-bold">Painel admin</h1>
+          <h1 className="text-sm font-semibold lg:hidden">Painel admin</h1>
+          <div className="hidden lg:block">
+            <p className="text-xs text-muted-foreground">Administração</p>
+            <p className="text-sm font-semibold capitalize">{tab}</p>
+          </div>
           <span className="ml-auto rounded-full border border-neon/40 bg-neon/10 px-2 py-0.5 text-[10px] font-bold uppercase text-neon">
             admin
           </span>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
           <div className="mb-6 hidden items-center justify-between lg:flex">
             <div>
-              <h2 className="font-display text-2xl font-bold capitalize">{tab}</h2>
+              <h2 className="page-title capitalize">{tab}</h2>
               <p className="text-xs text-muted-foreground">
                 {tab === "dashboard" && "Visão geral da plataforma"}
                 {tab === "rooms" && `${rooms.length} salas cadastradas`}
@@ -712,7 +773,7 @@ function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rooms.map((r) => {
+                  {pagedRooms.map((r) => {
                     const rev = adminStats?.roomRevenue?.[r.id] ?? 0;
                     return (
                       <tr key={r.id} className="border-t border-border">
@@ -773,6 +834,12 @@ function AdminPage() {
                   )}
                 </tbody>
               </table>
+              <Pagination
+                className="border-t border-border p-3"
+                page={roomsPage}
+                totalItems={rooms.length}
+                onPageChange={setRoomsPage}
+              />
             </div>
           )}
 
@@ -799,7 +866,7 @@ function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((i) => (
+                    {pagedItems.map((i) => (
                       <tr key={i.id} className="border-t border-border">
                         <td className="px-4 py-3">
                           <div className="font-medium">{i.title}</div>
@@ -846,6 +913,12 @@ function AdminPage() {
                     )}
                   </tbody>
                 </table>
+                <Pagination
+                  className="border-t border-border p-3"
+                  page={queuePage}
+                  totalItems={items.length}
+                  onPageChange={setQueuePage}
+                />
               </div>
             </div>
           )}
@@ -876,135 +949,132 @@ function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users
-                      .filter((u) => {
-                        const q = userSearch.trim().toLowerCase();
-                        if (!q) return true;
-                        return (
-                          u.email.toLowerCase().includes(q) ||
-                          (u.display_name ?? "").toLowerCase().includes(q)
-                        );
-                      })
-                      .map((u) => {
-                        const isAdminRow = u.roles.includes("admin");
-                        const isSelf = u.id === currentUserId;
-                        const isBanned = !!u.banned_until && new Date(u.banned_until) > new Date();
-                        return (
-                          <tr key={u.id} className="border-t border-border">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                {u.avatar_url ? (
-                                  <img
-                                    src={u.avatar_url}
-                                    alt=""
-                                    className="h-8 w-8 rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 text-xs font-bold text-muted-foreground">
-                                    {(u.display_name ?? u.email).slice(0, 1).toUpperCase()}
-                                  </div>
-                                )}
-                                <div>
-                                  <div className="font-medium">{u.display_name ?? "—"}</div>
-                                  {isSelf && (
-                                    <div className="text-[10px] uppercase text-neon">você</div>
-                                  )}
+                    {pagedUsers.map((u) => {
+                      const isAdminRow = u.roles.includes("admin");
+                      const isSelf = u.id === currentUserId;
+                      const isBanned = !!u.banned_until && new Date(u.banned_until) > new Date();
+                      return (
+                        <tr key={u.id} className="border-t border-border">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              {u.avatar_url ? (
+                                <img
+                                  src={u.avatar_url}
+                                  alt=""
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 text-xs font-bold text-muted-foreground">
+                                  {(u.display_name ?? u.email).slice(0, 1).toUpperCase()}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                            <td className="px-4 py-3">
-                              {isAdminRow ? (
-                                <span className="rounded-full bg-neon/15 px-2 py-0.5 text-xs text-neon">
-                                  admin
-                                </span>
-                              ) : (
-                                <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground">
-                                  user
-                                </span>
                               )}
-                            </td>
-                            <td className="px-4 py-3">
-                              {isBanned ? (
-                                <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs text-destructive">
-                                  banido
-                                </span>
-                              ) : (
-                                <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground">
-                                  ativo
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                              {u.last_sign_in_at
-                                ? new Date(u.last_sign_in_at).toLocaleDateString("pt-BR")
-                                : "—"}
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                              {new Date(u.created_at).toLocaleDateString("pt-BR")}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingUser(u);
-                                    setEditName(u.display_name ?? "");
-                                    setEditEmail(u.email);
-                                  }}
-                                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground"
-                                  title="Editar"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleResetPassword(u)}
-                                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground"
-                                  title="Enviar redefinição de senha"
-                                >
-                                  <KeyRound className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleToggleAdmin(u)}
-                                  disabled={isSelf && isAdminRow}
-                                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-40"
-                                  title={isAdminRow ? "Remover admin" : "Tornar admin"}
-                                >
-                                  {isAdminRow ? (
-                                    <ShieldOff className="h-4 w-4" />
-                                  ) : (
-                                    <Shield className="h-4 w-4" />
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => handleBanUser(u)}
-                                  disabled={isSelf}
-                                  className={`rounded-md border p-1.5 disabled:opacity-40 ${isBanned ? "border-neon/40 text-neon hover:bg-neon/10" : "border-border text-muted-foreground hover:text-foreground"}`}
-                                  title={isBanned ? "Desbanir" : "Banir"}
-                                >
-                                  <Ban className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteUser(u)}
-                                  disabled={isSelf}
-                                  className="rounded-md border border-destructive/40 p-1.5 text-destructive hover:bg-destructive/10 disabled:opacity-40"
-                                  title="Excluir"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                              <div>
+                                <div className="font-medium">{u.display_name ?? "—"}</div>
+                                {isSelf && (
+                                  <div className="text-[10px] uppercase text-neon">você</div>
+                                )}
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    {users.length === 0 && (
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                          <td className="px-4 py-3">
+                            {isAdminRow ? (
+                              <span className="rounded-full bg-neon/15 px-2 py-0.5 text-xs text-neon">
+                                admin
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground">
+                                user
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {isBanned ? (
+                              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs text-destructive">
+                                banido
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground">
+                                ativo
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {u.last_sign_in_at
+                              ? new Date(u.last_sign_in_at).toLocaleDateString("pt-BR")
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {new Date(u.created_at).toLocaleDateString("pt-BR")}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingUser(u);
+                                  setEditName(u.display_name ?? "");
+                                  setEditEmail(u.email);
+                                }}
+                                className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground"
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleResetPassword(u)}
+                                className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground"
+                                title="Enviar redefinição de senha"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleToggleAdmin(u)}
+                                disabled={isSelf && isAdminRow}
+                                className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                                title={isAdminRow ? "Remover admin" : "Tornar admin"}
+                              >
+                                {isAdminRow ? (
+                                  <ShieldOff className="h-4 w-4" />
+                                ) : (
+                                  <Shield className="h-4 w-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleBanUser(u)}
+                                disabled={isSelf}
+                                className={`rounded-md border p-1.5 disabled:opacity-40 ${isBanned ? "border-neon/40 text-neon hover:bg-neon/10" : "border-border text-muted-foreground hover:text-foreground"}`}
+                                title={isBanned ? "Desbanir" : "Banir"}
+                              >
+                                <Ban className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(u)}
+                                disabled={isSelf}
+                                className="rounded-md border border-destructive/40 p-1.5 text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredUsers.length === 0 && (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                          Nenhum usuário.
+                          Nenhum usuário encontrado.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+                <Pagination
+                  className="border-t border-border p-3"
+                  page={usersPage}
+                  totalItems={filteredUsers.length}
+                  onPageChange={setUsersPage}
+                />
               </div>
             </div>
           )}
@@ -1091,7 +1161,7 @@ function AdminPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {transactions.payments.map((p: any) => {
+                          {pagedTransactions.map((p: any) => {
                             const song = (p.song_payload ?? {}) as Record<string, unknown>;
                             return (
                               <tr key={p.id} className="border-t border-border align-top">
@@ -1110,7 +1180,9 @@ function AdminPage() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <div className="font-medium">{p.room_name ?? "Sala removida"}</div>
+                                  <div className="font-medium">
+                                    {p.room_name ?? "Sala removida"}
+                                  </div>
                                   <div className="text-[10px] text-muted-foreground">
                                     {p.room_slug ? `/${p.room_slug}` : p.room_id}
                                   </div>
@@ -1162,6 +1234,12 @@ function AdminPage() {
                         </tbody>
                       </table>
                     </div>
+                    <Pagination
+                      className="border-t border-border p-3"
+                      page={transactionsPage}
+                      totalItems={transactions.payments.length}
+                      onPageChange={setTransactionsPage}
+                    />
                   </div>
                 </>
               )}
@@ -1191,7 +1269,7 @@ function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {withdrawals.map((w: any) => (
+                      {pagedWithdrawals.map((w: any) => (
                         <tr key={w.id} className="border-t border-border align-top">
                           <td className="px-4 py-3 text-xs text-muted-foreground">
                             {new Date(w.created_at).toLocaleString("pt-BR")}
@@ -1201,7 +1279,9 @@ function AdminPage() {
                             <div className="text-[10px] text-muted-foreground">{w.user_email}</div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="font-bold tabular-nums">{formatCents(w.amount_cents)}</div>
+                            <div className="font-bold tabular-nums">
+                              {formatCents(w.amount_cents)}
+                            </div>
                             <div className="mt-1 text-[10px] text-muted-foreground">
                               taxa da plataforma já descontada
                             </div>
@@ -1271,6 +1351,12 @@ function AdminPage() {
                       ))}
                     </tbody>
                   </table>
+                  <Pagination
+                    className="border-t border-border p-3"
+                    page={withdrawalsPage}
+                    totalItems={withdrawals.length}
+                    onPageChange={setWithdrawalsPage}
+                  />
                 </div>
               )}
             </div>
@@ -1403,6 +1489,161 @@ function AdminPage() {
                     </div>
                   </div>
 
+                  <div className="border-t border-border pt-5">
+                    <div className="mb-4">
+                      <h3 className="font-display text-base font-bold">SEO e compartilhamento</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Esses textos aparecem no Google, WhatsApp, Discord e redes sociais. Mantenha
+                        o título objetivo e a descrição com o principal benefício do SongPIX.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Título SEO
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={70}
+                          value={settings.seo_title ?? ""}
+                          onChange={(e) => setSettings({ ...settings, seo_title: e.target.value })}
+                          placeholder="SongPIX | pedidos de música com PIX para lives"
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {String(settings.seo_title ?? "").length}/70 caracteres
+                        </p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Meta description
+                        </label>
+                        <textarea
+                          maxLength={180}
+                          rows={3}
+                          value={settings.seo_description ?? ""}
+                          onChange={(e) =>
+                            setSettings({ ...settings, seo_description: e.target.value })
+                          }
+                          placeholder="Explique em uma frase o que a plataforma faz."
+                          className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {String(settings.seo_description ?? "").length}/180 caracteres
+                        </p>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Palavras-chave
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={255}
+                          value={settings.seo_keywords ?? ""}
+                          onChange={(e) =>
+                            setSettings({ ...settings, seo_keywords: e.target.value })
+                          }
+                          placeholder="pedidos de música, PIX para live"
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          URL canônica
+                        </label>
+                        <input
+                          type="url"
+                          value={settings.seo_canonical_url ?? "https://songpix.app"}
+                          onChange={(e) =>
+                            setSettings({ ...settings, seo_canonical_url: e.target.value })
+                          }
+                          placeholder="https://songpix.app"
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Imagem para compartilhamento (OG)
+                        </label>
+                        <input
+                          type="url"
+                          value={settings.seo_og_image_url ?? ""}
+                          onChange={(e) =>
+                            setSettings({ ...settings, seo_og_image_url: e.target.value })
+                          }
+                          placeholder="https://songpix.app/og-image.png"
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Use uma imagem pública de 1200 × 630 px. Deixe vazio para usar o padrão.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border pt-5">
+                    <div className="mb-4">
+                      <h3 className="font-display text-base font-bold">Texto principal da home</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Ajuste a mensagem exibida para quem ainda não conhece a plataforma.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Selo acima do título
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={60}
+                          value={settings.home_badge ?? ""}
+                          onChange={(e) => setSettings({ ...settings, home_badge: e.target.value })}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Texto do botão principal
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={40}
+                          value={settings.home_primary_cta ?? ""}
+                          onChange={(e) =>
+                            setSettings({ ...settings, home_primary_cta: e.target.value })
+                          }
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Título principal
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={120}
+                          value={settings.home_title ?? ""}
+                          onChange={(e) => setSettings({ ...settings, home_title: e.target.value })}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-xs uppercase text-muted-foreground">
+                          Descrição principal
+                        </label>
+                        <textarea
+                          maxLength={300}
+                          rows={4}
+                          value={settings.home_description ?? ""}
+                          onChange={(e) =>
+                            setSettings({ ...settings, home_description: e.target.value })
+                          }
+                          className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-neon"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -1523,17 +1764,13 @@ function MetricCard({
   accent?: boolean;
 }) {
   return (
-    <div
-      className={`rounded-xl border bg-surface p-4 ${accent ? "border-neon/40" : "border-border"}`}
-    >
+    <div className={`app-panel p-4 ${accent ? "border-neon/40" : ""}`}>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          {label}
-        </div>
+        <div className="text-xs text-muted-foreground">{label}</div>
         <Icon className={`h-4 w-4 ${accent ? "text-neon" : "text-muted-foreground"}`} />
       </div>
       <div
-        className={`mt-2 font-display text-2xl font-bold tabular-nums ${accent ? "text-neon" : "text-foreground"}`}
+        className={`mt-3 text-2xl font-bold tabular-nums ${accent ? "text-neon" : "text-foreground"}`}
       >
         {value}
       </div>
@@ -1543,10 +1780,8 @@ function MetricCard({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <div className="mb-3 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-        {title}
-      </div>
+    <div className="app-panel p-4">
+      <div className="mb-3 text-sm font-semibold text-muted-foreground">{title}</div>
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           {children as any}

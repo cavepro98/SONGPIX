@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Wallet, Send, X, Banknote, KeyRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Pagination, paginate } from "@/components/Pagination";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 import {
@@ -56,6 +57,7 @@ function WithdrawalsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof getMyEarnings>> | null>(null);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [withdrawalsPage, setWithdrawalsPage] = useState(1);
   useBodyScrollLock(open);
 
   // form
@@ -89,8 +91,14 @@ function WithdrawalsPage() {
   const available = data?.availableCents ?? 0;
   const minWithdrawal = data?.minWithdrawalCents ?? 500;
   const grossCents = data?.grossCents ?? 0;
-  const commissionCents = data?.commissionCents ?? 0;
   const netCents = data?.netCents ?? 0;
+  const platformFeePercent = Math.round(Number(data?.commission ?? 0.1) * 100);
+  const withdrawals = (data?.withdrawals ?? []) as Withdrawal[];
+  const pagedWithdrawals = paginate(withdrawals, withdrawalsPage);
+
+  useEffect(() => {
+    setWithdrawalsPage(1);
+  }, [withdrawals.length]);
 
   const pixError = useMemo(
     () => (method === "pix" && pixKey ? validatePixKey(pixType, pixKey) : null),
@@ -156,57 +164,38 @@ function WithdrawalsPage() {
 
   return (
     <AppShell active="withdrawals">
-      <header className="mb-6 flex flex-col gap-1 border-b border-border pb-6">
-        <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-          Painel · Financeiro
-        </span>
-        <h1 className="font-display text-2xl font-bold italic uppercase leading-none tracking-tighter sm:text-5xl">
-          Saques
-        </h1>
-        <p className="max-w-xl pt-2 text-sm text-muted-foreground">
+      <header className="mb-6">
+        <p className="eyebrow">Financeiro</p>
+        <h1 className="page-title mt-1">Saques</h1>
+        <p className="page-description mt-1 max-w-xl">
           Solicite o resgate do seu saldo via PIX ou conta bancária.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-mono uppercase tracking-widest">
-          <span className="rounded-full border border-neon/40 bg-neon/10 px-3 py-1 text-neon">
-            Mínimo: {formatCents(minWithdrawal)}
-          </span>
-          <span className="rounded-full border border-border bg-surface px-3 py-1 text-muted-foreground">
-            ⏱ Cai em até 1 hora após aprovação
-          </span>
-        </div>
+        <p className="mt-2 max-w-xl text-xs font-semibold text-neon">
+          A plataforma retém {platformFeePercent}% sobre cada pagamento aprovado antes do valor
+          ficar disponível para saque.
+        </p>
       </header>
 
       <div>
         {/* Balance cards */}
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Valor original
-            </p>
-            <p className="mt-2 font-display text-2xl font-bold tabular-nums">
-              {formatCents(grossCents)}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="app-panel p-5">
+            <p className="text-sm text-muted-foreground">Valor original</p>
+            <p className="mt-3 text-2xl font-bold tabular-nums">{formatCents(grossCents)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Total pago pelos clientes.</p>
+          </div>
+          <div className="app-panel p-5">
+            <p className="text-sm text-muted-foreground">Ganhos líquidos</p>
+            <p className="mt-3 text-2xl font-bold tabular-nums text-neon">
+              {formatCents(netCents)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Total pago pelos clientes antes da taxa.
+              Base usada para calcular seu saldo.
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Taxa da plataforma
-            </p>
-            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-destructive">
-              -{formatCents(commissionCents)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Líquido gerado:{" "}
-              <span className="font-bold text-foreground">{formatCents(netCents)}</span>
-            </p>
-          </div>
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Em processo
-            </p>
-            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-yellow-400">
+          <div className="app-panel p-5">
+            <p className="text-sm text-muted-foreground">Em processo</p>
+            <p className="mt-3 text-2xl font-bold tabular-nums text-yellow-400">
               {formatCents(data?.processingCents ?? 0)}
             </p>
             <div className="mt-1 space-y-1 text-xs text-muted-foreground">
@@ -219,37 +208,35 @@ function WithdrawalsPage() {
               </p>
             </div>
           </div>
-          <div className="rounded-xl border-2 border-neon bg-neon p-4 text-neon-foreground">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-neon-foreground/70">
-              Disponível
-            </p>
-            <p className="mt-2 font-display text-4xl font-bold italic uppercase tabular-nums leading-none tracking-tighter text-neon-foreground">
+          <div className="rounded-xl border border-neon bg-neon p-5 text-neon-foreground shadow-neon">
+            <p className="text-sm text-neon-foreground/70">Disponível</p>
+            <p className="mt-3 text-3xl font-bold tabular-nums tracking-tight text-neon-foreground">
               {formatCents(available)}
             </p>
 
             <button
               onClick={() => setOpen(true)}
               disabled={available < minWithdrawal}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-neon-foreground px-3 py-2 text-xs font-bold uppercase tracking-widest text-neon disabled:opacity-40"
+              className="app-focus mt-4 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-neon-foreground px-3 text-xs font-semibold text-neon disabled:opacity-40"
             >
-              <Wallet className="h-4 w-4" /> Solicitar saque
+              <Wallet className="h-4 w-4" /> Solicitar saque (min: {formatCents(minWithdrawal)})
             </button>
           </div>
         </div>
 
         {/* History */}
-        <section className="mt-8">
-          <h2 className="mb-3 font-display text-lg font-bold">Histórico de saques</h2>
+        <section className="mt-7">
+          <h2 className="section-title mb-3">Histórico de saques</h2>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
-          ) : !data?.withdrawals?.length ? (
+            <div className="app-panel h-28 animate-pulse" />
+          ) : !withdrawals.length ? (
             <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
               Nenhum saque solicitado ainda.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-border bg-surface">
-              <table className="w-full text-sm">
-                <thead className="bg-surface-2 text-left text-xs uppercase text-muted-foreground">
+            <div className="app-panel overflow-hidden">
+              <table className="hidden w-full text-sm md:table">
+                <thead className="bg-surface-2/80 text-left text-xs font-medium text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">Data</th>
                     <th className="px-4 py-3">Valor líquido</th>
@@ -260,7 +247,7 @@ function WithdrawalsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(data.withdrawals as Withdrawal[]).map((w) => {
+                  {pagedWithdrawals.map((w) => {
                     const st = STATUS_LABEL[w.status];
                     return (
                       <tr key={w.id} className="border-t border-border">
@@ -269,9 +256,6 @@ function WithdrawalsPage() {
                         </td>
                         <td className="px-4 py-3 font-bold tabular-nums">
                           {formatCents(w.amount_cents)}
-                          <div className="mt-1 text-[10px] font-normal text-muted-foreground">
-                            taxa já descontada
-                          </div>
                         </td>
                         <td className="px-4 py-3">{w.method === "pix" ? "PIX" : "Banco"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
@@ -306,6 +290,57 @@ function WithdrawalsPage() {
                   })}
                 </tbody>
               </table>
+              <div className="divide-y divide-border md:hidden">
+                {pagedWithdrawals.map((w) => {
+                  const st = STATUS_LABEL[w.status];
+                  return (
+                    <article key={w.id} className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-bold tabular-nums">
+                            {formatCents(w.amount_cents)}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {new Date(w.created_at).toLocaleString("pt-BR")}
+                          </p>
+                        </div>
+                        <span
+                          className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${st.cls}`}
+                        >
+                          {st.label}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-background/50 p-3 text-xs text-muted-foreground">
+                        <p className="font-medium text-foreground">
+                          {w.method === "pix" ? "PIX" : "Conta bancária"}
+                        </p>
+                        <p className="mt-1 break-all">
+                          {w.method === "pix"
+                            ? `${w.pix_key_type}: ${w.pix_key}`
+                            : `${w.bank_name} · Ag ${w.bank_agency} · Cc ${w.bank_account}`}
+                        </p>
+                      </div>
+                      {w.admin_notes && (
+                        <p className="text-xs text-muted-foreground">{w.admin_notes}</p>
+                      )}
+                      {w.status === "pending" && (
+                        <button
+                          onClick={() => handleCancel(w.id)}
+                          className="text-xs font-medium text-destructive"
+                        >
+                          Cancelar solicitação
+                        </button>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+              <Pagination
+                className="border-t border-border p-3"
+                page={withdrawalsPage}
+                totalItems={withdrawals.length}
+                onPageChange={setWithdrawalsPage}
+              />
             </div>
           )}
         </section>
@@ -313,10 +348,10 @@ function WithdrawalsPage() {
 
       {/* Modal */}
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-2 backdrop-blur-sm sm:p-4">
           <form
             onSubmit={handleSubmit}
-            className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-6"
+            className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-5 shadow-2xl sm:max-h-[calc(100vh-2rem)] sm:p-6"
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-lg font-bold">Solicitar saque</h3>

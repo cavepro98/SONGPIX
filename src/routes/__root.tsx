@@ -13,11 +13,27 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import appCss from "../styles.css?url";
 import { isSupabaseClientConfigured, supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import bgNoise from "@/assets/bg-noise.gif";
+import { getPublicSiteSettings } from "@/lib/public-settings.functions";
+
+const DEFAULT_SEO = {
+  platformName: "SongPIX",
+  title: "SongPIX | pedidos de música com PIX para lives",
+  description:
+    "Crie uma fila de músicas para sua live, receba pedidos e organize apoios via PIX com o SongPIX.",
+  keywords: "pedidos de música, fila de músicas, PIX para live, overlay para live, SongPIX",
+  canonicalUrl: "https://songpix.app",
+  ogImageUrl: null as string | null,
+};
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.35] mix-blend-overlay"
+        style={{ backgroundImage: `url(${bgNoise})`, backgroundRepeat: "repeat" }}
+      />
+      <div className="app-panel relative max-w-md p-7 text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Página não encontrada</h2>
         <p className="mt-2 text-sm text-muted-foreground">O link que você abriu não existe mais.</p>
@@ -39,8 +55,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.35] mix-blend-overlay"
+        style={{ backgroundImage: `url(${bgNoise})`, backgroundRepeat: "repeat" }}
+      />
+      <div className="app-panel relative max-w-md p-7 text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Algo deu errado</h1>
         <p className="mt-2 text-sm text-muted-foreground">Tente novamente em alguns segundos.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -66,32 +86,60 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "SongPIX | fila de músicas para suas lives" },
-      {
-        name: "description",
-        content:
-          "Crie uma sala, compartilhe o link e deixe seus espectadores enviarem músicas pra fila. Quem pagar mais sobe.",
-      },
-      { name: "theme-color", content: "#0f0f0f" },
-      { property: "og:title", content: "SongPIX | fila de músicas para suas lives" },
-      {
-        property: "og:description",
-        content: "Fila colaborativa de músicas pra criadores que fazem live.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "SongPIX | fila de músicas para suas lives" },
-      {
-        name: "twitter:description",
-        content: "Fila colaborativa de músicas pra criadores que fazem live.",
-      },
-    ],
-    links: [{ rel: "stylesheet", href: appCss }],
-  }),
+  loader: async () => {
+    try {
+      return await getPublicSiteSettings();
+    } catch {
+      return null;
+    }
+  },
+  head: ({ loaderData }) => {
+    const seo = loaderData ?? DEFAULT_SEO;
+    const socialImage = seo.ogImageUrl
+      ? [
+          { property: "og:image", content: seo.ogImageUrl },
+          { name: "twitter:image", content: seo.ogImageUrl },
+        ]
+      : [];
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title: seo.title },
+        { name: "description", content: seo.description },
+        { name: "keywords", content: seo.keywords },
+        { name: "theme-color", content: "#0f0f0f" },
+        { property: "og:title", content: seo.title },
+        { property: "og:description", content: seo.description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: seo.canonicalUrl },
+        { property: "og:site_name", content: seo.platformName },
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: seo.title },
+        { name: "twitter:description", content: seo.description },
+        ...socialImage,
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "canonical", href: seo.canonicalUrl },
+      ],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: seo.platformName,
+            url: seo.canonicalUrl,
+            description: seo.description,
+            applicationCategory: "EntertainmentApplication",
+            operatingSystem: "Web",
+          }),
+        },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -104,7 +152,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="professional-ui">
         {children}
         <Scripts />
       </body>

@@ -46,34 +46,31 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
 
-  --shadow-neon:
-    0 0 0 1px color-mix(in oklab, var(--neon) 30%, transparent),
-    0 0 24px -6px color-mix(in oklab, var(--neon) 50%, transparent);
+  --shadow-neon: none;
 }
 
 :root {
-  --radius: 0;
-  /* Industrial console — dark gray (not pure black) with neon mint */
-  --background: oklch(0.2 0 0); /* ~#1f1f1f */
+  --radius: 0rem;
+  --background: oklch(0.16 0 0);
   --foreground: oklch(0.97 0 0);
-  --surface: oklch(0.24 0 0); /* ~#2a2a2a */
-  --surface-2: oklch(0.22 0 0); /* ~#262626 */
-  --card: oklch(0.24 0 0);
+  --surface: oklch(0.215 0 0);
+  --surface-2: oklch(0.185 0 0);
+  --card: oklch(0.215 0 0);
   --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.24 0 0);
+  --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.97 0 0);
   --primary: oklch(0.97 0 0);
   --primary-foreground: oklch(0.2 0 0);
-  --secondary: oklch(0.3 0 0);
+  --secondary: oklch(0.255 0 0);
   --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.28 0 0);
-  --muted-foreground: oklch(0.68 0 0);
-  --accent: oklch(0.3 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.7 0 0);
+  --accent: oklch(0.265 0 0);
   --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.62 0.21 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.32 0 0); /* ~#3a3a3a */
-  --input: oklch(0.28 0 0);
+  --border: oklch(0.3 0 0);
+  --input: oklch(0.29 0 0);
   --ring: oklch(0.92 0.22 158);
   --neon: oklch(0.92 0.22 158);
   --neon-foreground: oklch(0.2 0 0);
@@ -94,6 +91,7 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    min-width: 320px;
   }
   h1,
   h2,
@@ -108,6 +106,112 @@
   }
   .font-display {
     font-synthesis: weight style;
+  }
+}
+
+@layer components {
+  .brand-font {
+    font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+    font-style: italic;
+    text-transform: uppercase;
+  }
+
+  .app-panel {
+    border: 0;
+    border-radius: 0;
+    background: color-mix(in oklab, var(--surface) 94%, transparent);
+    box-shadow: 0 18px 45px -34px rgb(0 0 0 / 0.9);
+  }
+
+  .app-card {
+    border: 0;
+    border-radius: 0;
+    background: color-mix(in oklab, var(--card) 92%, transparent);
+  }
+
+  .professional-ui button,
+  .professional-ui a[class*="inline-flex"],
+  .professional-ui a[class~="border"] {
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .professional-ui :is(button, a)[class*="border-border"],
+  .professional-ui :is(button, a)[class*="border-input"] {
+    border: 1px solid var(--border) !important;
+  }
+
+  .professional-ui :is(button, a)[class*="border-neon"] {
+    border: 1px solid color-mix(in oklab, var(--neon) 55%, transparent) !important;
+  }
+
+  .professional-ui
+    :is(button, a)[class*="border-neon"]:not([class~="bg-neon"]):not(
+      [class~="bg-neon-foreground"]
+    ) {
+    border-color: var(--border) !important;
+  }
+
+  .professional-ui :is(div, section, article, aside, form, fieldset)[class~="border"] {
+    border: 0 !important;
+  }
+
+  .professional-ui
+    :is(.rounded-sm, .rounded-md, .rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl) {
+    border-radius: 0 !important;
+  }
+
+  .page-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.55rem, 3vw, 2rem);
+    font-weight: 800;
+    font-style: italic;
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+  }
+
+  .page-description {
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
+    font-weight: 800;
+    font-style: italic;
+    letter-spacing: -0.01em;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    color: var(--neon);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .app-focus {
+    outline: none;
+  }
+
+  .app-focus:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

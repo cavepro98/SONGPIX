@@ -144,27 +144,25 @@ function AuthPage() {
       <div className="pointer-events-none absolute -left-28 top-24 h-72 w-72 rounded-full bg-neon/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-24 bottom-16 h-80 w-80 rounded-full bg-neon/10 blur-3xl" />
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="relative mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-5xl items-center gap-10 lg:grid-cols-[1fr_0.82fr]">
         <section className="hidden animate-[soft-in_0.8s_ease-out_both] lg:block">
           <Link to="/" className="inline-flex items-center gap-2">
-            <div className="grid h-11 w-11 place-items-center bg-neon text-neon-foreground shadow-neon">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-neon text-neon-foreground shadow-neon">
               <ListMusic className="h-5 w-5" />
             </div>
-            <span className="font-display text-2xl font-black italic uppercase tracking-tighter">
-              SongPIX
+            <span className="brand-font text-2xl font-bold tracking-tight">
+              Song<span className="text-neon">PIX</span>
             </span>
           </Link>
 
-          <div className="mt-14 max-w-xl">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.35em] text-neon">
-              painel da live
-            </span>
-            <h1 className="mt-4 font-display text-5xl font-black italic uppercase leading-[0.9] tracking-tighter xl:text-6xl">
+          <div className="mt-12 max-w-xl">
+            <span className="eyebrow">painel da live</span>
+            <h1 className="mt-4 text-4xl font-bold leading-[1.02] tracking-[-0.045em] xl:text-5xl">
               Sua fila de música com PIX ao vivo.
             </h1>
             <p className="mt-5 max-w-lg text-base font-medium leading-relaxed text-muted-foreground">
-              Crie salas, receba pedidos, organize fura fila, configure overlays e acompanhe seus
-              ganhos em um painel único.
+              Configure seu SongPIX, receba pedidos, organize o fura fila e acompanhe seus ganhos em
+              um painel único.
             </p>
           </div>
 
@@ -174,7 +172,7 @@ function AuthPage() {
               { icon: Zap, title: "Fura fila", text: "prioridade por donate" },
               { icon: ShieldCheck, title: "Controle", text: "dono gerencia tudo" },
             ].map((item) => (
-              <div key={item.title} className="border border-border bg-surface/75 p-4">
+              <div key={item.title} className="app-card bg-surface/75 p-4">
                 <item.icon className="h-4 w-4 text-neon" />
                 <div className="mt-4 font-display text-xs font-bold uppercase tracking-tight">
                   {item.title}
@@ -189,20 +187,20 @@ function AuthPage() {
 
         <section className="mx-auto w-full max-w-md animate-[soft-in_0.7s_ease-out_both]">
           <Link to="/" className="mb-8 flex items-center justify-center gap-2 lg:hidden">
-            <div className="grid h-10 w-10 place-items-center bg-neon text-neon-foreground">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-neon text-neon-foreground">
               <ListMusic className="h-5 w-5" />
             </div>
-            <span className="font-display text-xl font-black italic uppercase tracking-tighter">
-              SongPIX
+            <span className="brand-font text-xl font-bold tracking-tight">
+              Song<span className="text-neon">PIX</span>
             </span>
           </Link>
 
-          <div className="border border-border bg-surface/90 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur sm:p-7">
-            <div className="mb-6 grid grid-cols-2 border border-border bg-background p-1">
+          <div className="app-panel bg-surface/90 p-5 backdrop-blur sm:p-6">
+            <div className="mb-6 grid grid-cols-2 rounded-lg border border-border bg-background p-1">
               <button
                 type="button"
                 onClick={() => setMode("signin")}
-                className={`px-3 py-2 font-display text-[10px] font-black uppercase tracking-widest transition ${
+                className={`min-h-9 rounded-md px-3 text-xs font-semibold transition ${
                   mode === "signin"
                     ? "bg-neon text-neon-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -214,7 +212,7 @@ function AuthPage() {
                 type="button"
                 disabled={!!appConfig?.maintenanceMode}
                 onClick={() => setMode("signup")}
-                className={`px-3 py-2 font-display text-[10px] font-black uppercase tracking-widest transition disabled:opacity-40 ${
+                className={`min-h-9 rounded-md px-3 text-xs font-semibold transition disabled:opacity-40 ${
                   mode === "signup"
                     ? "bg-neon text-neon-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -225,10 +223,8 @@ function AuthPage() {
             </div>
 
             <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-neon">
-                {mode === "signin" ? "acesso do dono" : "nova conta"}
-              </span>
-              <h1 className="mt-2 font-display text-3xl font-black italic uppercase leading-none tracking-tighter">
+              <span className="eyebrow">{mode === "signin" ? "acesso do dono" : "nova conta"}</span>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight">
                 {mode === "signin" ? "Entrar no painel" : "Criar sua sala"}
               </h1>
               <p className="mt-2 text-sm font-medium text-muted-foreground">
@@ -260,7 +256,7 @@ function AuthPage() {
             <form onSubmit={handleSubmit} className="mt-7 space-y-4">
               {mode === "signup" && (
                 <div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <label className="text-xs font-medium text-muted-foreground">
                     Apelido / @ do usuário
                   </label>
                   <input
@@ -269,27 +265,23 @@ function AuthPage() {
                     onChange={(e) => setName(e.target.value)}
                     maxLength={40}
                     placeholder="@seudj"
-                    className="mt-1 w-full border border-input bg-background px-4 py-3 text-sm font-bold outline-none transition focus:border-neon focus:ring-1 focus:ring-neon"
+                    className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm outline-none transition focus:border-neon focus:ring-2 focus:ring-neon/20"
                   />
                 </div>
               )}
               <div>
-                <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Email
-                </label>
+                <label className="text-xs font-medium text-muted-foreground">Email</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="voce@email.com"
-                  className="mt-1 w-full border border-input bg-background px-4 py-3 text-sm font-bold outline-none transition focus:border-neon focus:ring-1 focus:ring-neon"
+                  className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm outline-none transition focus:border-neon focus:ring-2 focus:ring-neon/20"
                 />
               </div>
               <div>
-                <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Senha
-                </label>
+                <label className="text-xs font-medium text-muted-foreground">Senha</label>
                 <input
                   type="password"
                   required
@@ -297,17 +289,19 @@ function AuthPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="mínimo 6 caracteres"
-                  className="mt-1 w-full border border-input bg-background px-4 py-3 text-sm font-bold outline-none transition focus:border-neon focus:ring-1 focus:ring-neon"
+                  className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm outline-none transition focus:border-neon focus:ring-2 focus:ring-neon/20"
                 />
               </div>
               <button
                 type="submit"
                 disabled={submitDisabled}
-                className="group flex w-full items-center justify-center gap-2 bg-neon px-4 py-3.5 font-display text-xs font-black uppercase tracking-widest text-neon-foreground transition hover:opacity-90 disabled:opacity-50"
+                className="app-focus group flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-neon px-4 text-sm font-semibold text-neon-foreground transition hover:opacity-90 disabled:opacity-50"
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {loading ? "Aguarde" : mode === "signin" ? "Entrar agora" : "Criar conta"}
-                {!loading && <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />}
+                {!loading && (
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                )}
               </button>
             </form>
 
@@ -315,7 +309,7 @@ function AuthPage() {
               type="button"
               disabled={!!appConfig?.maintenanceMode}
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-              className="mt-6 w-full border border-border bg-background px-4 py-3 text-center font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition hover:border-neon hover:text-neon disabled:opacity-40"
+              className="app-focus mt-4 min-h-11 w-full rounded-lg border border-border bg-background px-4 text-center text-sm font-medium text-muted-foreground transition hover:border-neon/50 hover:text-foreground disabled:opacity-40"
             >
               {mode === "signin" ? "Não tem conta? Criar agora" : "Já tem conta? Entrar"}
             </button>

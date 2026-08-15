@@ -6,23 +6,20 @@ import { toast } from "sonner";
 import {
   ListMusic,
   Plus,
-  LogOut,
   Trash2,
-  Home,
   Radio,
   Share2,
   Music2,
   ArrowUpRight,
   ImagePlus,
   X,
-  Menu,
   Wallet,
   Pencil,
   MessageCircle,
   Zap,
   Loader2,
 } from "lucide-react";
-import bgNoise from "@/assets/bg-noise.gif";
+import { AppShell } from "@/components/AppShell";
 import { useCoverUrl } from "@/lib/use-cover-url";
 import {
   Dialog,
@@ -62,7 +59,6 @@ type Room = {
 };
 
 const DASHBOARD_WELCOME_STORAGE_KEY = "songpix-dashboard-welcome-seen";
-const SUPPORT_WHATSAPP_URL = "https://wa.me/5598984723943";
 const DEFAULT_BOOST_LIMITS = {
   minBoostGlobalCents: 100,
   maxBoostGlobalCents: 1_000_000,
@@ -102,12 +98,12 @@ function Dashboard() {
   const fetchEarnings = useServerFn(getMyEarnings);
   const fetchBoostLimits = useServerFn(getBoostPriceLimits);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [musicCount, setMusicCount] = useState(0);
   const [availableCents, setAvailableCents] = useState(0);
   const [boostLimits, setBoostLimits] = useState(DEFAULT_BOOST_LIMITS);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
@@ -133,6 +129,7 @@ function Dashboard() {
     const uid = userData.user?.id;
     if (!uid) {
       setRooms([]);
+      setMusicCount(0);
       setAvailableCents(0);
       setLoading(false);
       return;
@@ -156,8 +153,24 @@ function Dashboard() {
       }),
     ]);
     const { data, error } = roomResult;
-    if (error) toast.error(error.message);
-    else setRooms((data ?? []) as Room[]);
+    if (error) {
+      toast.error(error.message);
+      setMusicCount(0);
+    } else {
+      const nextRooms = (data ?? []) as Room[];
+      setRooms(nextRooms);
+      const primaryRoomId = nextRooms[0]?.id;
+      if (primaryRoomId) {
+        const { count, error: countError } = await supabase
+          .from("queue_items")
+          .select("id", { count: "exact", head: true })
+          .eq("room_id", primaryRoomId);
+        if (countError) toast.error(countError.message);
+        setMusicCount(count ?? 0);
+      } else {
+        setMusicCount(0);
+      }
+    }
     setAvailableCents(Number(earnings?.availableCents ?? 0));
     setBoostLimits(limits ?? DEFAULT_BOOST_LIMITS);
     setLoading(false);
@@ -416,11 +429,7 @@ function Dashboard() {
     }
     toast.success("Sala excluída");
     setRooms((prev) => prev.filter((r) => r.id !== id));
-  }
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    setMusicCount(0);
   }
 
   const gradients = [
@@ -439,344 +448,191 @@ function Dashboard() {
     : `${platformHost}/seu-link`;
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
-      <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.35] mix-blend-overlay"
-        style={{
-          backgroundImage: `url(${bgNoise})`,
-          backgroundRepeat: "repeat",
-          backgroundSize: "240px 240px",
-        }}
-      />
-      <div className="relative z-10 flex min-h-screen flex-col md:flex-row">
-        {/* MOBILE TOP BAR */}
-        <div className="flex items-center justify-between border-b-2 border-border bg-surface-2/70 px-4 py-3 backdrop-blur-[1px] md:hidden">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setNavOpen(true)}
-              className="border border-border p-1.5 text-muted-foreground hover:border-neon hover:text-neon"
-              aria-label="Abrir menu"
-            >
-              <Menu className="h-4 w-4" />
-            </button>
-            <Link to="/" className="flex items-center gap-2">
-              <div className="grid h-7 w-7 place-items-center bg-neon text-neon-foreground">
-                <ListMusic className="h-4 w-4" />
-              </div>
-              <span className="font-display text-base font-bold italic uppercase tracking-tighter">
-                SongPIX
-              </span>
-            </Link>
+    <>
+      <AppShell
+        active="dashboard"
+        roomSlug={primaryRoom?.slug}
+        contextLabel={primaryRoom?.name}
+        roomOpen={primaryRoom?.is_open}
+      >
+        {/* Page header */}
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="eyebrow">Painel principal</p>
+            <h1 className="page-title mt-1">Visão geral</h1>
+            <p className="page-description mt-1 max-w-2xl">
+              Seu SongPIX é um link único para receber pedidos, doações e fura fila durante a live.
+              Configure uma vez e compartilhe com o chat.
+            </p>
           </div>
           <button
-            onClick={handleSignOut}
-            className="border border-border p-1.5 text-muted-foreground hover:border-neon hover:text-neon"
-            aria-label="Sair"
+            onClick={openMainConfig}
+            className="app-focus inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-neon px-4 text-sm font-semibold text-neon-foreground transition hover:opacity-90"
           >
-            <LogOut className="h-4 w-4" />
+            <Plus className="h-4 w-4" /> Configurar meu SongPIX
           </button>
-        </div>
+        </header>
 
-        {/* MOBILE NAV BACKDROP */}
-        {navOpen && (
-          <button
-            type="button"
-            onClick={() => setNavOpen(false)}
-            className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm md:hidden"
-            aria-label="Fechar menu"
-          />
-        )}
-
-        {/* SIDEBAR */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r-2 border-border bg-surface-2/95 backdrop-blur-[1px] transition-transform md:static md:z-auto md:translate-x-0 md:bg-surface-2/70 ${navOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
-          onClick={() => setNavOpen(false)}
-        >
-          <Link to="/" className="mb-8 flex items-center gap-2 border-b border-border px-5 py-5">
-            <div className="grid h-8 w-8 place-items-center bg-neon text-neon-foreground">
-              <ListMusic className="h-4 w-4" />
+        {/* Stats strip */}
+        {(() => {
+          const availableFmt = (availableCents / 100).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          });
+          return (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="app-panel p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Músicas recebidas</p>
+                    <div className="mt-4 text-3xl font-bold tabular-nums tracking-tight">
+                      {musicCount.toString().padStart(2, "0")}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">Total do seu SongPIX</p>
+                  </div>
+                  <div className="grid h-11 w-11 place-items-center rounded-xl border border-neon/20 bg-neon/10 text-neon">
+                    <Music2 className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+              <Link
+                to="/withdrawals"
+                className="app-panel group p-5 transition hover:border-neon/40"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Disponível para saque</p>
+                    <div className="mt-4 text-3xl font-bold tabular-nums tracking-tight text-neon">
+                      {availableFmt}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Consulte seu saldo e histórico de saques
+                    </p>
+                  </div>
+                  <div className="grid h-11 w-11 place-items-center rounded-xl border border-neon/20 bg-neon/10 text-neon transition group-hover:bg-neon group-hover:text-neon-foreground">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                </div>
+              </Link>
             </div>
-            <span className="font-display text-lg font-bold italic uppercase tracking-tighter">
-              SongPIX
-            </span>
-          </Link>
+          );
+        })()}
 
-          <nav className="space-y-1 px-3">
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-3 border-l-2 border-neon bg-surface px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-foreground"
-            >
-              <Home className="h-4 w-4" /> Início
-            </Link>
-            <button
-              onClick={openMainConfig}
-              className="flex w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:bg-surface hover:text-foreground"
-            >
-              <Plus className="h-4 w-4" /> Configurar
-            </button>
-            <Link
-              to="/withdrawals"
-              className="flex items-center gap-3 border-l-2 border-transparent px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:bg-surface hover:text-foreground"
-            >
-              <Wallet className="h-4 w-4" /> Saques
-            </Link>
-          </nav>
-
-          <div className="mt-8 px-3">
-            <div className="border-b border-border px-2 pb-2 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              Sala principal
+        {/* Main room */}
+        <section className="mt-6 pb-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h2 className="section-title">Meu SongPIX</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Sua sala e link público</p>
             </div>
-            <div className="mt-2 space-y-0.5">
-              {primaryRoom ? (
+          </div>
+
+          {loading ? (
+            <div className="app-panel space-y-3 p-5">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-lg bg-neon text-neon-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Buscando seu SongPIX</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">sincronizando seu SongPIX</p>
+                </div>
+              </div>
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="h-16 animate-pulse rounded-lg bg-background/60" />
+              ))}
+            </div>
+          ) : !primaryRoom ? (
+            <div className="app-panel border-dashed p-7 text-center sm:p-9">
+              <Radio className="mx-auto h-8 w-8 text-neon" />
+              <p className="mt-3 text-lg font-semibold">Configure seu link principal</p>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                Defina seu link, capa, fontes aceitas e valores. Esse será o endereço único para o
+                público pedir músicas na sua live.
+              </p>
+              <button
+                onClick={openMainConfig}
+                className="app-focus mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg bg-neon px-4 text-sm font-semibold text-neon-foreground hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" /> Configurar meu SongPIX
+              </button>
+            </div>
+          ) : (
+            <div className="app-panel group relative overflow-hidden p-4 transition hover:border-neon/40 sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Link
                   to="/rooms/$slug"
                   params={{ slug: primaryRoom.slug }}
-                  className="block truncate px-2 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-neon"
+                  className="flex min-w-0 flex-1 items-center gap-4"
                 >
-                  · {primaryRoom.name}
+                  <div
+                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-gradient-to-br sm:h-20 sm:w-20 ${gradients[0]}`}
+                  >
+                    <RoomCover path={primaryRoom.cover_url} name={primaryRoom.name} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="truncate text-xl font-semibold tracking-tight">
+                        {primaryRoom.name}
+                      </div>
+                      {primaryRoom.is_open && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-neon/30 bg-neon/10 px-2 py-0.5 text-[10px] font-semibold text-neon">
+                          <span className="h-1 w-1 animate-pulse rounded-full bg-neon" />
+                          ao vivo
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 truncate text-xs font-medium text-neon">
+                      songpix.app/{primaryRoom.slug}
+                    </div>
+                    <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                      Esse é o link para seu público enviar músicas e apoios durante a live.
+                    </p>
+                  </div>
+                  <ArrowUpRight className="hidden h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-neon md:block" />
                 </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={openMainConfig}
-                  className="block w-full truncate px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-neon"
-                >
-                  · configurar link
-                </button>
-              )}
-            </div>
-          </div>
-
-          <a
-            href={SUPPORT_WHATSAPP_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mx-3 mb-2 mt-auto flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
-          >
-            <MessageCircle className="h-4 w-4" /> Suporte WhatsApp
-          </a>
-          <button
-            onClick={handleSignOut}
-            className="mx-3 mb-4 flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
-          >
-            <LogOut className="h-4 w-4" /> Sair
-          </button>
-        </aside>
-
-        {/* MAIN */}
-        <main className="min-w-0 flex-1">
-          <div className="w-full px-4 py-6 sm:px-8 sm:py-8">
-            {/* Console header */}
-            <header className="flex flex-col gap-4 border-b border-border pb-6 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-              <div className="min-w-0 space-y-1">
-                <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                  Painel · Studio
-                </span>
-                <h1 className="font-display text-2xl font-bold italic uppercase leading-none tracking-tighter sm:text-5xl">
-                  Boa, vamo <span className="text-neon">subir o som</span>
-                </h1>
-                <p className="max-w-xl pt-2 text-sm text-muted-foreground">
-                  Seu SongPIX é um link único para receber pedidos, doações e fura fila durante a
-                  live. Configure uma vez e compartilhe com o chat.
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-row items-center justify-between gap-2 sm:flex-col sm:items-end">
-                <div className="flex items-center gap-2 border border-neon/40 bg-neon/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-neon">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neon shadow-[0_0_8px_var(--neon)]" />
-                  Studio Online
-                </div>
-                <button
-                  onClick={openMainConfig}
-                  className="hidden items-center gap-2 border border-neon bg-neon px-4 py-2 font-display text-[11px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90 sm:inline-flex"
-                >
-                  <Plus className="h-4 w-4" /> Configurar meu SongPIX
-                </button>
-              </div>
-            </header>
-
-            {/* Stats strip */}
-            {(() => {
-              const availableFmt = (availableCents / 100).toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              });
-              return (
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="border border-border bg-surface/60 p-4 backdrop-blur-[1px]">
-                    <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      <Music2 className="h-3 w-3" /> Sala principal
-                    </div>
-                    <div className="mt-2 font-display text-3xl font-bold tabular-nums leading-none tracking-tighter">
-                      {primaryRoom ? "01" : "00"}
-                    </div>
-                  </div>
-                  <div className="border border-border bg-surface/60 p-4 backdrop-blur-[1px]">
-                    <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      <Radio className="h-3 w-3" /> Ao Vivo
-                    </div>
-                    <div className="mt-2 font-display text-3xl font-bold tabular-nums leading-none tracking-tighter text-neon">
-                      {primaryRoom?.is_open ? "01" : "00"}
-                    </div>
-                  </div>
-                  <Link
-                    to="/withdrawals"
-                    className="col-span-2 bg-neon p-4 text-neon-foreground transition hover:opacity-90 sm:col-span-2"
-                  >
-                    <div className="flex items-center justify-between font-mono text-[10px] font-bold uppercase tracking-widest text-neon-foreground/80">
-                      <span className="flex items-center gap-1.5">
-                        <Wallet className="h-3 w-3" /> Disponível para saque
-                      </span>
-                      <span className="opacity-70">ver saques →</span>
-                    </div>
-                    <div className="mt-2 font-display text-3xl font-bold italic uppercase tabular-nums leading-none tracking-tighter text-neon-foreground">
-                      {availableFmt}
-                    </div>
-                    <div className="mt-1 font-mono text-[10px] text-neon-foreground/70">
-                      Já desconta saques pendentes, aprovados e pagos
-                    </div>
-                  </Link>
-                </div>
-              );
-            })()}
-
-            {/* Mobile full-width create button */}
-            <button
-              onClick={openMainConfig}
-              className="mt-4 flex w-full items-center justify-center gap-2 border border-neon bg-neon py-2.5 font-display text-[11px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90 sm:hidden"
-            >
-              <Plus className="h-4 w-4" /> Configurar meu SongPIX
-            </button>
-
-            {/* Main room */}
-            <section className="mt-6 pb-16 sm:mt-10">
-              <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
-                <h2 className="font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Meu SongPIX
-                </h2>
-                <span className="font-mono text-[10px] text-muted-foreground">Link principal</span>
-              </div>
-
-              {loading ? (
-                <div className="space-y-3 border border-border bg-surface/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center bg-neon text-neon-foreground">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </div>
-                    <div>
-                      <p className="font-display text-sm font-bold uppercase tracking-tight">
-                        Buscando seu SongPIX
-                      </p>
-                      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                        sincronizando sua sala principal
-                      </p>
-                    </div>
-                  </div>
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-20 animate-pulse border border-border bg-background/60"
-                    />
-                  ))}
-                </div>
-              ) : !primaryRoom ? (
-                <div className="border border-dashed border-border bg-black/40 p-8 text-center sm:p-12">
-                  <Radio className="mx-auto h-8 w-8 text-neon" />
-                  <p className="mt-3 font-display text-lg font-bold uppercase tracking-widest">
-                    Configure seu link principal
-                  </p>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    Defina seu link, capa, fontes aceitas e valores. Esse será o endereço único para
-                    o público pedir músicas na sua live.
-                  </p>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
                   <button
-                    onClick={openMainConfig}
-                    className="mt-4 inline-flex items-center gap-1 border border-neon bg-neon px-4 py-2 font-display text-[11px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/${primaryRoom.slug}`,
+                      );
+                      toast.success("Link copiado");
+                    }}
+                    className="app-focus inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground hover:border-neon/50 hover:text-foreground"
                   >
-                    <Plus className="h-4 w-4" /> Configurar meu SongPIX
+                    <Share2 className="h-3.5 w-3.5" />
+                    link
+                  </button>
+                  <button
+                    onClick={() => openEdit(primaryRoom.id)}
+                    className="app-focus inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground hover:border-neon/50 hover:text-foreground"
+                    aria-label="Editar sala"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    editar
+                  </button>
+                  <Link
+                    to="/rooms/$slug"
+                    params={{ slug: primaryRoom.slug }}
+                    className="app-focus col-span-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-neon px-3 text-xs font-semibold text-neon-foreground hover:opacity-90 sm:col-span-1"
+                  >
+                    abrir painel
+                  </Link>
+                  <button
+                    onClick={() => setDeleteId(primaryRoom.id)}
+                    className="app-focus col-span-2 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground hover:border-destructive/60 hover:text-destructive sm:col-span-1"
+                    aria-label="Remover sala"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    excluir
                   </button>
                 </div>
-              ) : (
-                <div className="group relative overflow-hidden border border-border bg-surface/60 p-3 backdrop-blur-[1px] transition hover:border-neon/40 hover:bg-surface sm:p-4">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <Link
-                      to="/rooms/$slug"
-                      params={{ slug: primaryRoom.slug }}
-                      className="flex min-w-0 flex-1 items-center gap-4"
-                    >
-                      <div
-                        className={`relative h-20 w-20 shrink-0 overflow-hidden border border-border bg-gradient-to-br sm:h-24 sm:w-24 ${gradients[0]}`}
-                      >
-                        <RoomCover path={primaryRoom.cover_url} name={primaryRoom.name} />
-                        <span className="absolute left-1 top-1 z-10 bg-background/80 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase text-neon">
-                          principal
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="truncate font-display text-2xl font-bold tracking-tight">
-                            {primaryRoom.name}
-                          </div>
-                          {primaryRoom.is_open && (
-                            <span className="inline-flex items-center gap-1 border border-neon/40 bg-neon/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
-                              <span className="h-1 w-1 animate-pulse rounded-full bg-neon" />
-                              ao vivo
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1 truncate font-mono text-xs uppercase tracking-widest text-neon">
-                          songpix.app/{primaryRoom.slug}
-                        </div>
-                        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                          Esse é o link principal para seu público enviar músicas e apoios durante a
-                          live.
-                        </p>
-                      </div>
-                      <ArrowUpRight className="hidden h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-neon md:block" />
-                    </Link>
-                    <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(
-                            `${window.location.origin}/${primaryRoom.slug}`,
-                          );
-                          toast.success("Link copiado");
-                        }}
-                        className="inline-flex items-center justify-center gap-1 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
-                      >
-                        <Share2 className="h-3.5 w-3.5" />
-                        link
-                      </button>
-                      <button
-                        onClick={() => openEdit(primaryRoom.id)}
-                        className="inline-flex items-center justify-center gap-1 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
-                        aria-label="Editar sala"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        editar
-                      </button>
-                      <Link
-                        to="/rooms/$slug"
-                        params={{ slug: primaryRoom.slug }}
-                        className="col-span-2 inline-flex items-center justify-center gap-1 border border-neon bg-neon px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90 sm:col-span-1"
-                      >
-                        abrir painel
-                      </Link>
-                      <button
-                        onClick={() => setDeleteId(primaryRoom.id)}
-                        className="col-span-2 inline-flex items-center justify-center gap-1 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-destructive hover:text-destructive sm:col-span-1"
-                        aria-label="Remover sala"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        excluir
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
-          </div>
-        </main>
-      </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </AppShell>
 
       <Dialog
         open={welcomeOpen}
@@ -787,7 +643,7 @@ function Dashboard() {
       >
         <DialogContent className="bg-surface border-border sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl font-bold italic uppercase tracking-tighter">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
               Bem-vindo ao SongPIX
             </DialogTitle>
             <DialogDescription>
@@ -813,9 +669,9 @@ function Dashboard() {
               return (
                 <div
                   key={item.text}
-                  className="flex gap-3 border border-border bg-background/40 p-3"
+                  className="flex gap-3 rounded-lg border border-border bg-background/40 p-3"
                 >
-                  <div className="grid h-8 w-8 shrink-0 place-items-center bg-neon text-neon-foreground">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neon text-neon-foreground">
                     <Icon className="h-4 w-4" />
                   </div>
                   <p className="text-sm text-muted-foreground">{item.text}</p>
@@ -853,20 +709,20 @@ function Dashboard() {
       >
         <DialogContent className="max-h-[92vh] overflow-y-auto bg-surface border-border sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl font-bold italic uppercase tracking-tighter">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
               Configurar meu SongPIX
             </DialogTitle>
             <DialogDescription>
               Defina seu link público, identidade, valores e regras para receber pedidos na live.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 border border-neon/30 bg-neon/[0.06] p-3 sm:grid-cols-3">
+          <div className="grid gap-2 rounded-xl border border-neon/30 bg-neon/[0.06] p-3 sm:grid-cols-3">
             {[
               ["01", "Link", "Endereço público e identidade da sala."],
               ["02", "Monetização", "Valores e modo pago obrigatório."],
               ["03", "Fontes", "Links e upload aceitos pelo público."],
             ].map(([n, title, desc]) => (
-              <div key={n} className="border border-border/70 bg-background/50 p-3">
+              <div key={n} className="rounded-lg border border-border/70 bg-background/50 p-3">
                 <div className="font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
                   etapa {n}
                 </div>
@@ -878,7 +734,7 @@ function Dashboard() {
             ))}
           </div>
           <form onSubmit={handleCreate} className="space-y-5">
-            <fieldset className="space-y-4 border border-border bg-background/40 p-4">
+            <fieldset className="space-y-4 rounded-xl border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Identidade e link público
               </legend>
@@ -921,7 +777,7 @@ function Dashboard() {
                 <div className="flex-1 space-y-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                      Nome da sala principal
+                      Nome do seu SongPIX
                     </label>
                     <input
                       type="text"
@@ -975,7 +831,7 @@ function Dashboard() {
               </div>
             </fieldset>
 
-            <fieldset className="space-y-3 border border-border bg-background/40 p-4">
+            <fieldset className="space-y-3 rounded-xl border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Fura fila
               </legend>
@@ -1015,7 +871,7 @@ function Dashboard() {
               </p>
             </fieldset>
 
-            <fieldset className="space-y-3 border border-neon/30 bg-neon/[0.05] p-4">
+            <fieldset className="space-y-3 rounded-xl border border-neon/30 bg-neon/[0.05] p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-neon">
                 Modo de entrada
               </legend>
@@ -1053,7 +909,7 @@ function Dashboard() {
               </button>
             </fieldset>
 
-            <fieldset className="space-y-2 border border-border bg-background/40 p-4">
+            <fieldset className="space-y-2 rounded-xl border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Duração máxima por música
               </legend>
@@ -1074,7 +930,7 @@ function Dashboard() {
               </p>
             </fieldset>
 
-            <fieldset className="space-y-2 border border-border bg-background/40 p-4">
+            <fieldset className="space-y-2 rounded-xl border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Fontes aceitas
               </legend>
@@ -1126,7 +982,7 @@ function Dashboard() {
       <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
         <AlertDialogContent className="bg-surface border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir sala principal?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir meu SongPIX?</AlertDialogTitle>
             <AlertDialogDescription>
               A sala e as músicas serão apagadas. As vendas e o histórico financeiro continuarão
               preservados.
@@ -1143,7 +999,7 @@ function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
 

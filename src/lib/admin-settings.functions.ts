@@ -53,6 +53,15 @@ const UpdateInput = z.object({
   allow_signups: z.boolean(),
   maintenance_mode: z.boolean(),
   support_email: z.string().email().or(z.literal("")).nullable().optional(),
+  seo_title: z.string().trim().min(1).max(70),
+  seo_description: z.string().trim().min(1).max(180),
+  seo_keywords: z.string().trim().max(255),
+  seo_canonical_url: z.string().url().max(300),
+  seo_og_image_url: z.string().url().max(2000).or(z.literal("")).nullable().optional(),
+  home_badge: z.string().trim().min(1).max(60),
+  home_title: z.string().trim().min(1).max(120),
+  home_description: z.string().trim().min(1).max(300),
+  home_primary_cta: z.string().trim().min(1).max(40),
 });
 
 export const updatePlatformSettings = createServerFn({ method: "POST" })

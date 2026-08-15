@@ -115,6 +115,10 @@ export async function verifyMpSignature(opts: {
   const v1 = parts.v1;
   if (!ts || !v1) return false;
 
+  const timestampSeconds = Number(ts);
+  if (!Number.isFinite(timestampSeconds)) return false;
+  if (Math.abs(Date.now() / 1000 - timestampSeconds) > 10 * 60) return false;
+
   const manifest = `id:${opts.dataId};request-id:${opts.xRequestId ?? ""};ts:${ts};`;
   const { createHmac, timingSafeEqual } = await import("crypto");
   const expected = createHmac("sha256", secret).update(manifest).digest("hex");

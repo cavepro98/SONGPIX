@@ -19,7 +19,8 @@ export function Marquee({ children, className = "", speed = 40, gap = 48 }: Prop
     if (!wrap || !content) return;
 
     function measure() {
-      const w = wrap!.getBoundingClientRect().width;
+      // clientWidth is not affected by the scale transform used by overlay widgets.
+      const w = wrap!.clientWidth;
       const c = content!.scrollWidth;
       const isOver = c > w + 2;
       setOverflow(isOver);

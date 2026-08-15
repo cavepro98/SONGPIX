@@ -134,7 +134,16 @@ export type Database = {
           min_boost_global_cents: number;
           min_withdrawal_cents: number;
           platform_name: string;
+          seo_canonical_url: string;
+          seo_description: string;
+          seo_keywords: string;
+          seo_og_image_url: string | null;
+          seo_title: string;
           support_email: string | null;
+          home_badge: string;
+          home_title: string;
+          home_description: string;
+          home_primary_cta: string;
           updated_at: string;
         };
         Insert: {
@@ -146,7 +155,16 @@ export type Database = {
           min_boost_global_cents?: number;
           min_withdrawal_cents?: number;
           platform_name?: string;
+          seo_canonical_url?: string;
+          seo_description?: string;
+          seo_keywords?: string;
+          seo_og_image_url?: string | null;
+          seo_title?: string;
           support_email?: string | null;
+          home_badge?: string;
+          home_title?: string;
+          home_description?: string;
+          home_primary_cta?: string;
           updated_at?: string;
         };
         Update: {
@@ -158,7 +176,16 @@ export type Database = {
           min_boost_global_cents?: number;
           min_withdrawal_cents?: number;
           platform_name?: string;
+          seo_canonical_url?: string;
+          seo_description?: string;
+          seo_keywords?: string;
+          seo_og_image_url?: string | null;
+          seo_title?: string;
           support_email?: string | null;
+          home_badge?: string;
+          home_title?: string;
+          home_description?: string;
+          home_primary_cta?: string;
           updated_at?: string;
         };
         Relationships: [];
