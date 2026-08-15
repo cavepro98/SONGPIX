@@ -13,7 +13,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SpotifyCallbackRouteImport } from './routes/spotify.callback'
 import { Route as OverlaySlugRouteImport } from './routes/overlay.$slug'
 import { Route as AuthenticatedWithdrawalsRouteImport } from './routes/_authenticated/withdrawals'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -42,11 +41,6 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SpotifyCallbackRoute = SpotifyCallbackRouteImport.update({
-  id: '/spotify/callback',
-  path: '/spotify/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OverlaySlugRoute = OverlaySlugRouteImport.update({
@@ -111,7 +105,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/overlay/$slug': typeof OverlaySlugRoute
-  '/spotify/callback': typeof SpotifyCallbackRoute
   '/rooms/$slug': typeof AuthenticatedRoomsSlugRoute
   '/api/public/app-config': typeof ApiPublicAppConfigRoute
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
@@ -127,7 +120,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/overlay/$slug': typeof OverlaySlugRoute
-  '/spotify/callback': typeof SpotifyCallbackRoute
   '/rooms/$slug': typeof AuthenticatedRoomsSlugRoute
   '/api/public/app-config': typeof ApiPublicAppConfigRoute
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
@@ -145,7 +137,6 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/overlay/$slug': typeof OverlaySlugRoute
-  '/spotify/callback': typeof SpotifyCallbackRoute
   '/_authenticated/rooms/$slug': typeof AuthenticatedRoomsSlugRoute
   '/api/public/app-config': typeof ApiPublicAppConfigRoute
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
@@ -163,7 +154,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/withdrawals'
     | '/overlay/$slug'
-    | '/spotify/callback'
     | '/rooms/$slug'
     | '/api/public/app-config'
     | '/api/public/auth/signup'
@@ -179,7 +169,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/withdrawals'
     | '/overlay/$slug'
-    | '/spotify/callback'
     | '/rooms/$slug'
     | '/api/public/app-config'
     | '/api/public/auth/signup'
@@ -196,7 +185,6 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/withdrawals'
     | '/overlay/$slug'
-    | '/spotify/callback'
     | '/_authenticated/rooms/$slug'
     | '/api/public/app-config'
     | '/api/public/auth/signup'
@@ -211,7 +199,6 @@ export interface RootRouteChildren {
   SlugRoute: typeof SlugRoute
   AuthRoute: typeof AuthRoute
   OverlaySlugRoute: typeof OverlaySlugRoute
-  SpotifyCallbackRoute: typeof SpotifyCallbackRoute
   ApiPublicAppConfigRoute: typeof ApiPublicAppConfigRoute
   ApiPublicAuthSignupRoute: typeof ApiPublicAuthSignupRoute
   ApiPublicPaymentsCreateRoute: typeof ApiPublicPaymentsCreateRoute
@@ -247,13 +234,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/spotify/callback': {
-      id: '/spotify/callback'
-      path: '/spotify/callback'
-      fullPath: '/spotify/callback'
-      preLoaderRoute: typeof SpotifyCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/overlay/$slug': {
@@ -352,7 +332,6 @@ const rootRouteChildren: RootRouteChildren = {
   SlugRoute: SlugRoute,
   AuthRoute: AuthRoute,
   OverlaySlugRoute: OverlaySlugRoute,
-  SpotifyCallbackRoute: SpotifyCallbackRoute,
   ApiPublicAppConfigRoute: ApiPublicAppConfigRoute,
   ApiPublicAuthSignupRoute: ApiPublicAuthSignupRoute,
   ApiPublicPaymentsCreateRoute: ApiPublicPaymentsCreateRoute,

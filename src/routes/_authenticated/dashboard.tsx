@@ -46,7 +46,7 @@ import { getBoostPriceLimits } from "@/lib/admin-settings.functions";
 import { getMyEarnings } from "@/lib/withdrawals.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Minhas salas | SongPIX" }] }),
+  head: () => ({ meta: [{ title: "Meu SongPIX | SongPIX" }] }),
   component: Dashboard,
 });
 
@@ -67,6 +67,17 @@ const DEFAULT_BOOST_LIMITS = {
   minBoostGlobalCents: 100,
   maxBoostGlobalCents: 1_000_000,
 };
+const RESERVED_SLUGS = new Set([
+  "admin",
+  "api",
+  "auth",
+  "dashboard",
+  "overlay",
+  "rooms",
+  "saques",
+  "spotify",
+  "withdrawals",
+]);
 
 function slugify(s: string) {
   return s
@@ -76,6 +87,10 @@ function slugify(s: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
+}
+
+function normalizePublicSlug(s: string) {
+  return slugify(s.replace(/^@+/, ""));
 }
 
 function formatCents(c: number) {
@@ -100,6 +115,7 @@ function Dashboard() {
 
   // form
   const [name, setName] = useState("");
+  const [publicSlug, setPublicSlug] = useState("");
   const [description, setDescription] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -167,11 +183,12 @@ function Dashboard() {
 
   function createFirstRoomFromWelcome() {
     closeWelcome();
-    setOpen(true);
+    openMainConfig();
   }
 
   function resetForm() {
     setName("");
+    setPublicSlug("");
     setDescription("");
     setCoverFile(null);
     if (coverPreview) URL.revokeObjectURL(coverPreview);
@@ -188,11 +205,21 @@ function Dashboard() {
     setEditId(null);
   }
 
+  function openMainConfig() {
+    const primary = rooms[0];
+    if (primary) {
+      openEdit(primary.id);
+      return;
+    }
+    resetForm();
+    setOpen(true);
+  }
+
   async function openEdit(roomId: string) {
     const { data, error } = await supabase
       .from("rooms")
       .select(
-        "id, name, description, cover_url, min_boost_cents, max_boost_cents, max_duration_sec, allow_youtube, allow_spotify, allow_soundcloud, allow_upload, require_payment",
+        "id, slug, name, description, cover_url, min_boost_cents, max_boost_cents, max_duration_sec, allow_youtube, allow_spotify, allow_soundcloud, allow_upload, require_payment",
       )
       .eq("id", roomId)
       .maybeSingle();
@@ -202,6 +229,7 @@ function Dashboard() {
     }
     setEditId(data.id);
     setName(data.name ?? "");
+    setPublicSlug(data.slug ?? "");
     setDescription(data.description ?? "");
     setCoverFile(null);
     if (coverPreview) URL.revokeObjectURL(coverPreview);
@@ -249,6 +277,15 @@ function Dashboard() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    const slug = normalizePublicSlug(publicSlug || name);
+    if (!slug || slug.length < 3) {
+      toast.error("Defina um link público com pelo menos 3 caracteres");
+      return;
+    }
+    if (RESERVED_SLUGS.has(slug)) {
+      toast.error("Esse link é reservado pelo SongPIX");
+      return;
+    }
     const cents = Math.round(parseFloat(minBoost.replace(",", ".")) * 100);
     const maxCents = Math.round(parseFloat(maxBoost.replace(",", ".")) * 100);
     if (!Number.isFinite(cents) || cents < 0) {
@@ -290,6 +327,7 @@ function Dashboard() {
       if (!userData.user) throw new Error("Sessão expirada");
 
       const payload = {
+        slug,
         name: name.trim(),
         description: description.trim() || null,
         min_boost_cents: cents,
@@ -304,29 +342,29 @@ function Dashboard() {
 
       let roomId: string;
       let roomSlug: string;
+      const targetEditId = editId || rooms[0]?.id || null;
 
-      if (editId) {
+      const { data: existingSlug, error: slugError } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (slugError) throw slugError;
+      if (existingSlug && existingSlug.id !== targetEditId) {
+        throw new Error("Esse link público já está em uso");
+      }
+
+      if (targetEditId) {
         const { data, error } = await supabase
           .from("rooms")
           .update(payload)
-          .eq("id", editId)
+          .eq("id", targetEditId)
           .select("id, slug")
           .single();
         if (error) throw error;
         roomId = data.id;
         roomSlug = data.slug;
       } else {
-        const base = slugify(name) || "sala";
-        let slug = base;
-        for (let i = 0; i < 3; i++) {
-          const { data: existing } = await supabase
-            .from("rooms")
-            .select("id")
-            .eq("slug", slug)
-            .maybeSingle();
-          if (!existing) break;
-          slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
-        }
         const { data, error } = await supabase
           .from("rooms")
           .insert({ ...payload, slug, owner_id: userData.user.id })
@@ -351,8 +389,8 @@ function Dashboard() {
         }
       }
 
-      toast.success(editId ? "Sala atualizada!" : "Sala criada!");
-      const wasEdit = !!editId;
+      toast.success(targetEditId ? "SongPIX atualizado!" : "SongPIX configurado!");
+      const wasEdit = !!targetEditId;
       setOpen(false);
       resetForm();
       if (wasEdit) {
@@ -393,6 +431,12 @@ function Dashboard() {
     "from-rose-500/40 to-orange-500/20",
     "from-teal-500/40 to-lime-500/20",
   ];
+  const primaryRoom = rooms[0] ?? null;
+  const platformHost = typeof window !== "undefined" ? window.location.host : "songpix.app";
+  const publicSlugPreview = normalizePublicSlug(publicSlug || name);
+  const publicLinkPreview = publicSlugPreview
+    ? `${platformHost}/${publicSlugPreview}`
+    : `${platformHost}/seu-link`;
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -465,10 +509,10 @@ function Dashboard() {
               <Home className="h-4 w-4" /> Início
             </Link>
             <button
-              onClick={() => setOpen(true)}
+              onClick={openMainConfig}
               className="flex w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:bg-surface hover:text-foreground"
             >
-              <Plus className="h-4 w-4" /> Nova
+              <Plus className="h-4 w-4" /> Configurar
             </button>
             <Link
               to="/withdrawals"
@@ -480,19 +524,26 @@ function Dashboard() {
 
           <div className="mt-8 px-3">
             <div className="border-b border-border px-2 pb-2 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              Estações · {rooms.length.toString().padStart(2, "0")}
+              Sala principal
             </div>
-            <div className="mt-2 max-h-[40vh] space-y-0.5 overflow-y-auto">
-              {rooms.map((r) => (
+            <div className="mt-2 space-y-0.5">
+              {primaryRoom ? (
                 <Link
-                  key={r.id}
                   to="/rooms/$slug"
-                  params={{ slug: r.slug }}
+                  params={{ slug: primaryRoom.slug }}
                   className="block truncate px-2 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-neon"
                 >
-                  · {r.name}
+                  · {primaryRoom.name}
                 </Link>
-              ))}
+              ) : (
+                <button
+                  type="button"
+                  onClick={openMainConfig}
+                  className="block w-full truncate px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-neon"
+                >
+                  · configurar link
+                </button>
+              )}
             </div>
           </div>
 
@@ -525,8 +576,8 @@ function Dashboard() {
                   Boa, vamo <span className="text-neon">subir o som</span>
                 </h1>
                 <p className="max-w-xl pt-2 text-sm text-muted-foreground">
-                  Cada playlist é uma sala ao vivo. Compartilha o link, recebe música e deixa o chat
-                  pagar pra furar a fila.
+                  Seu SongPIX é um link único para receber pedidos, doações e fura fila durante a
+                  live. Configure uma vez e compartilhe com o chat.
                 </p>
               </div>
               <div className="flex shrink-0 flex-row items-center justify-between gap-2 sm:flex-col sm:items-end">
@@ -535,10 +586,10 @@ function Dashboard() {
                   Studio Online
                 </div>
                 <button
-                  onClick={() => setOpen(true)}
+                  onClick={openMainConfig}
                   className="hidden items-center gap-2 border border-neon bg-neon px-4 py-2 font-display text-[11px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90 sm:inline-flex"
                 >
-                  <Plus className="h-4 w-4" /> Nova playlist
+                  <Plus className="h-4 w-4" /> Configurar meu SongPIX
                 </button>
               </div>
             </header>
@@ -553,10 +604,10 @@ function Dashboard() {
                 <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="border border-border bg-surface/60 p-4 backdrop-blur-[1px]">
                     <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      <Music2 className="h-3 w-3" /> Playlists
+                      <Music2 className="h-3 w-3" /> Sala principal
                     </div>
                     <div className="mt-2 font-display text-3xl font-bold tabular-nums leading-none tracking-tighter">
-                      {rooms.length.toString().padStart(2, "0")}
+                      {primaryRoom ? "01" : "00"}
                     </div>
                   </div>
                   <div className="border border-border bg-surface/60 p-4 backdrop-blur-[1px]">
@@ -564,10 +615,7 @@ function Dashboard() {
                       <Radio className="h-3 w-3" /> Ao Vivo
                     </div>
                     <div className="mt-2 font-display text-3xl font-bold tabular-nums leading-none tracking-tighter text-neon">
-                      {rooms
-                        .filter((r) => r.is_open)
-                        .length.toString()
-                        .padStart(2, "0")}
+                      {primaryRoom?.is_open ? "01" : "00"}
                     </div>
                   </div>
                   <Link
@@ -593,21 +641,19 @@ function Dashboard() {
 
             {/* Mobile full-width create button */}
             <button
-              onClick={() => setOpen(true)}
+              onClick={openMainConfig}
               className="mt-4 flex w-full items-center justify-center gap-2 border border-neon bg-neon py-2.5 font-display text-[11px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90 sm:hidden"
             >
-              <Plus className="h-4 w-4" /> Criar nova playlist
+              <Plus className="h-4 w-4" /> Configurar meu SongPIX
             </button>
 
-            {/* Rooms list */}
+            {/* Main room */}
             <section className="mt-6 pb-16 sm:mt-10">
               <div className="mb-3 flex items-end justify-between border-b border-border pb-2">
                 <h2 className="font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Suas Estações
+                  Meu SongPIX
                 </h2>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {rooms.length.toString().padStart(2, "0")} REGISTRADAS
-                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">Link principal</span>
               </div>
 
               {loading ? (
@@ -618,102 +664,113 @@ function Dashboard() {
                     </div>
                     <div>
                       <p className="font-display text-sm font-bold uppercase tracking-tight">
-                        Buscando suas estações
+                        Buscando seu SongPIX
                       </p>
                       <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                        sincronizando salas criadas no painel
+                        sincronizando sua sala principal
                       </p>
                     </div>
                   </div>
-                  {Array.from({ length: 3 }).map((_, i) => (
+                  {Array.from({ length: 2 }).map((_, i) => (
                     <div
                       key={i}
                       className="h-20 animate-pulse border border-border bg-background/60"
                     />
                   ))}
                 </div>
-              ) : rooms.length === 0 ? (
-                <div className="border border-dashed border-border bg-black/40 p-12 text-center">
-                  <Radio className="mx-auto h-8 w-8 text-muted-foreground" />
-                  <p className="mt-3 font-display font-bold uppercase tracking-widest">
-                    Nenhuma estação ativa
+              ) : !primaryRoom ? (
+                <div className="border border-dashed border-border bg-black/40 p-8 text-center sm:p-12">
+                  <Radio className="mx-auto h-8 w-8 text-neon" />
+                  <p className="mt-3 font-display text-lg font-bold uppercase tracking-widest">
+                    Configure seu link principal
                   </p>
-                  <p className="mt-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                    Crie a primeira pra começar a captar pedidos
+                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                    Defina seu link, capa, fontes aceitas e valores. Esse será o endereço único para
+                    o público pedir músicas na sua live.
                   </p>
                   <button
-                    onClick={() => setOpen(true)}
+                    onClick={openMainConfig}
                     className="mt-4 inline-flex items-center gap-1 border border-neon bg-neon px-4 py-2 font-display text-[11px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90"
                   >
-                    <Plus className="h-4 w-4" /> Criar playlist
+                    <Plus className="h-4 w-4" /> Configurar meu SongPIX
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {rooms.map((r, i) => (
-                    <div
-                      key={r.id}
-                      className="group relative flex w-full items-center gap-4 border border-border bg-surface/60 p-3 backdrop-blur-[1px] transition hover:border-neon/40 hover:bg-surface"
+                <div className="group relative overflow-hidden border border-border bg-surface/60 p-3 backdrop-blur-[1px] transition hover:border-neon/40 hover:bg-surface sm:p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <Link
+                      to="/rooms/$slug"
+                      params={{ slug: primaryRoom.slug }}
+                      className="flex min-w-0 flex-1 items-center gap-4"
                     >
+                      <div
+                        className={`relative h-20 w-20 shrink-0 overflow-hidden border border-border bg-gradient-to-br sm:h-24 sm:w-24 ${gradients[0]}`}
+                      >
+                        <RoomCover path={primaryRoom.cover_url} name={primaryRoom.name} />
+                        <span className="absolute left-1 top-1 z-10 bg-background/80 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase text-neon">
+                          principal
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="truncate font-display text-2xl font-bold tracking-tight">
+                            {primaryRoom.name}
+                          </div>
+                          {primaryRoom.is_open && (
+                            <span className="inline-flex items-center gap-1 border border-neon/40 bg-neon/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
+                              <span className="h-1 w-1 animate-pulse rounded-full bg-neon" />
+                              ao vivo
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 truncate font-mono text-xs uppercase tracking-widest text-neon">
+                          songpix.app/{primaryRoom.slug}
+                        </div>
+                        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                          Esse é o link principal para seu público enviar músicas e apoios durante a
+                          live.
+                        </p>
+                      </div>
+                      <ArrowUpRight className="hidden h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-neon md:block" />
+                    </Link>
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `${window.location.origin}/${primaryRoom.slug}`,
+                          );
+                          toast.success("Link copiado");
+                        }}
+                        className="inline-flex items-center justify-center gap-1 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                        link
+                      </button>
+                      <button
+                        onClick={() => openEdit(primaryRoom.id)}
+                        className="inline-flex items-center justify-center gap-1 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
+                        aria-label="Editar sala"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        editar
+                      </button>
                       <Link
                         to="/rooms/$slug"
-                        params={{ slug: r.slug }}
-                        className="flex min-w-0 flex-1 items-center gap-4"
+                        params={{ slug: primaryRoom.slug }}
+                        className="col-span-2 inline-flex items-center justify-center gap-1 border border-neon bg-neon px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90 sm:col-span-1"
                       >
-                        <div
-                          className={`relative h-16 w-16 shrink-0 overflow-hidden border border-border bg-gradient-to-br sm:h-20 sm:w-20 ${gradients[i % gradients.length]}`}
-                        >
-                          <RoomCover path={r.cover_url} name={r.name} />
-                          <span className="absolute left-1 top-1 z-10 font-mono text-[9px] font-bold uppercase text-foreground/70 mix-blend-difference">
-                            #{(i + 1).toString().padStart(2, "0")}
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="truncate font-display text-lg font-bold tracking-tight">
-                              {r.name}
-                            </div>
-                            {r.is_open && (
-                              <span className="inline-flex items-center gap-1 border border-neon/40 bg-neon/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-neon">
-                                <span className="h-1 w-1 animate-pulse rounded-full bg-neon" />
-                                ao vivo
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                            songpix.app/{r.slug}
-                          </div>
-                        </div>
-                        <ArrowUpRight className="hidden h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-neon md:block" />
+                        abrir painel
                       </Link>
-                      <div className="flex shrink-0 items-center gap-1 pl-2">
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/${r.slug}`);
-                            toast.success("Link copiado");
-                          }}
-                          className="inline-flex items-center gap-1 border border-border px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-neon hover:text-neon"
-                        >
-                          <Share2 className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">link</span>
-                        </button>
-                        <button
-                          onClick={() => openEdit(r.id)}
-                          className="border border-border p-2 text-muted-foreground hover:border-neon hover:text-neon"
-                          aria-label="Editar sala"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(r.id)}
-                          className="border border-border p-2 text-muted-foreground hover:border-destructive hover:text-destructive"
-                          aria-label="Remover sala"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setDeleteId(primaryRoom.id)}
+                        className="col-span-2 inline-flex items-center justify-center gap-1 border border-border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-destructive hover:text-destructive sm:col-span-1"
+                        aria-label="Remover sala"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        excluir
+                      </button>
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
             </section>
@@ -734,21 +791,30 @@ function Dashboard() {
               Bem-vindo ao SongPIX
             </DialogTitle>
             <DialogDescription>
-              Monte uma sala para sua live, compartilhe o link com o público e receba pedidos de
-              música com fura fila para destacar no Top.
+              Configure seu link principal, compartilhe com o público e receba pedidos de música com
+              apoio e fura fila durante a live.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
             {[
               { icon: Plus, text: "Crie uma sala com capa, fontes aceitas e valor de fura fila." },
-              { icon: Share2, text: "Envie o link público para o chat pedir músicas." },
-              { icon: Zap, text: "Use Fura Fila e Top para organizar os pedidos mais importantes." },
+              { icon: Share2, text: "Defina seu link público e envie para o chat." },
+              {
+                icon: Zap,
+                text: "Use Fura Fila e Top para organizar os pedidos mais importantes.",
+              },
               { icon: Wallet, text: "Acompanhe ganhos e solicite saques quando atingir o mínimo." },
-              { icon: MessageCircle, text: "Mande dúvidas, dicas e sugestões pelo suporte WhatsApp." },
+              {
+                icon: MessageCircle,
+                text: "Mande dúvidas, dicas e sugestões pelo suporte WhatsApp.",
+              },
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.text} className="flex gap-3 border border-border bg-background/40 p-3">
+                <div
+                  key={item.text}
+                  className="flex gap-3 border border-border bg-background/40 p-3"
+                >
                   <div className="grid h-8 w-8 shrink-0 place-items-center bg-neon text-neon-foreground">
                     <Icon className="h-4 w-4" />
                   </div>
@@ -764,7 +830,7 @@ function Dashboard() {
                 onClick={createFirstRoomFromWelcome}
                 className="inline-flex items-center justify-center gap-1 rounded-md border border-neon bg-neon px-4 py-2 text-sm font-semibold text-neon-foreground hover:opacity-90"
               >
-                <Plus className="h-4 w-4" /> Criar primeira sala
+                <Plus className="h-4 w-4" /> Configurar meu SongPIX
               </button>
             )}
             <button
@@ -785,20 +851,18 @@ function Dashboard() {
           if (!v) resetForm();
         }}
       >
-        <DialogContent className="bg-surface border-border sm:max-w-2xl">
+        <DialogContent className="max-h-[92vh] overflow-y-auto bg-surface border-border sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display text-xl font-bold italic uppercase tracking-tighter">
-              {editId ? "Editar playlist" : "Nova playlist"}
+              Configurar meu SongPIX
             </DialogTitle>
             <DialogDescription>
-              {editId
-                ? "Atualize nome, capa, descrição, preços de fura fila e fontes aceitas."
-                : "Configure o nome, capa, descrição, preço do fura fila e as fontes aceitas."}
+              Defina seu link público, identidade, valores e regras para receber pedidos na live.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 border border-neon/30 bg-neon/[0.06] p-3 sm:grid-cols-3">
             {[
-              ["01", "Identidade", "Nome, capa e descrição da sala."],
+              ["01", "Link", "Endereço público e identidade da sala."],
               ["02", "Monetização", "Valores e modo pago obrigatório."],
               ["03", "Fontes", "Links e upload aceitos pelo público."],
             ].map(([n, title, desc]) => (
@@ -809,17 +873,14 @@ function Dashboard() {
                 <div className="mt-1 font-display text-xs font-bold uppercase tracking-widest">
                   {title}
                 </div>
-                <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                  {desc}
-                </div>
+                <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{desc}</div>
               </div>
             ))}
           </div>
           <form onSubmit={handleCreate} className="space-y-5">
-            {/* 📝 Informações Básicas */}
             <fieldset className="space-y-4 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                📝 Informações básicas
+                Identidade e link público
               </legend>
 
               <div className="grid gap-4 sm:grid-cols-[104px_minmax(0,1fr)]">
@@ -860,17 +921,38 @@ function Dashboard() {
                 <div className="flex-1 space-y-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                      Nome da sala
+                      Nome da sala principal
                     </label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       maxLength={60}
-                      placeholder="Ex: Live de quinta"
+                      placeholder="Ex: Live do Mateus"
                       className="w-full rounded-md border border-input bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neon"
                       autoFocus
                     />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Link público
+                    </label>
+                    <div className="flex overflow-hidden rounded-md border border-input bg-surface-2 focus-within:ring-2 focus-within:ring-neon">
+                      <span className="shrink-0 border-r border-border bg-background/60 px-3 py-2 font-mono text-xs text-muted-foreground">
+                        {platformHost}/
+                      </span>
+                      <input
+                        type="text"
+                        value={publicSlug}
+                        onChange={(e) => setPublicSlug(e.target.value.replace(/^@+/, ""))}
+                        maxLength={48}
+                        placeholder="mateuslive"
+                        className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none"
+                      />
+                    </div>
+                    <div className="mt-1 truncate font-mono text-[10px] font-bold uppercase tracking-widest text-neon">
+                      {publicLinkPreview}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -895,7 +977,7 @@ function Dashboard() {
 
             <fieldset className="space-y-3 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                ⚡ Fura fila
+                Fura fila
               </legend>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -935,7 +1017,7 @@ function Dashboard() {
 
             <fieldset className="space-y-3 border border-neon/30 bg-neon/[0.05] p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-neon">
-                🔒 Modo de entrada
+                Modo de entrada
               </legend>
               <button
                 type="button"
@@ -973,7 +1055,7 @@ function Dashboard() {
 
             <fieldset className="space-y-2 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                ⏱ Duração máxima por música
+                Duração máxima por música
               </legend>
               <div className="flex items-center gap-2">
                 <input
@@ -994,7 +1076,7 @@ function Dashboard() {
 
             <fieldset className="space-y-2 border border-border bg-background/40 p-4">
               <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                🎧 Fontes aceitas
+                Fontes aceitas
               </legend>
               {[
                 { label: "YouTube", val: allowYoutube, set: setAllowYoutube },
@@ -1026,13 +1108,13 @@ function Dashboard() {
                 disabled={creating || !name.trim()}
                 className="inline-flex items-center justify-center gap-1 rounded-md bg-neon px-4 py-2 text-sm font-semibold text-neon-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {editId ? (
+                {editId || primaryRoom ? (
                   <>
                     <Pencil className="h-4 w-4" /> Salvar
                   </>
                 ) : (
                   <>
-                    <Plus className="h-4 w-4" /> Criar
+                    <Plus className="h-4 w-4" /> Configurar
                   </>
                 )}
               </button>
@@ -1044,7 +1126,7 @@ function Dashboard() {
       <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
         <AlertDialogContent className="bg-surface border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover playlist?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir sala principal?</AlertDialogTitle>
             <AlertDialogDescription>
               A sala e as músicas serão apagadas. As vendas e o histórico financeiro continuarão
               preservados.

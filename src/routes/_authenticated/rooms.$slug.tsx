@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,7 +18,6 @@ import {
   SkipForward,
   Star,
   Trash2,
-  Volume2,
   Wallet,
   X,
   Zap,
@@ -33,12 +32,6 @@ import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { dispatchOverlayAlertTest } from "@/lib/overlay-alert-test";
 import { triggerOverlayAlertTest } from "@/lib/overlay-alert.functions";
 import { listRoomPayments } from "@/lib/payments.functions";
-import {
-  getStoredSpotifyToken,
-  setSpotifyPlaybackVolume,
-  startSpotifyVolumeAuth,
-  storeSpotifyToken,
-} from "@/lib/spotify-volume";
 import {
   Dialog,
   DialogContent,
@@ -66,12 +59,10 @@ function fmtTime(totalSeconds: number) {
 
 function OwnerPlayer({
   item,
-  volume,
   onEnded,
   onProgress,
 }: {
   item: QueueItem;
-  volume: number;
   onEnded?: () => void;
   onProgress?: (p: Progress) => void;
 }) {
@@ -125,13 +116,7 @@ function OwnerPlayer({
     );
   }
   return (
-    <MusicPlayer
-      url={resolvedUrl}
-      source={item.source}
-      volume={volume}
-      onEnded={onEnded}
-      onProgress={onProgress}
-    />
+    <MusicPlayer url={resolvedUrl} source={item.source} onEnded={onEnded} onProgress={onProgress} />
   );
 }
 
@@ -207,15 +192,6 @@ function RoomPanel() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [spotifyTipsOpen, setSpotifyTipsOpen] = useState(false);
-  const [spotifyConnected, setSpotifyConnected] = useState(() => !!getStoredSpotifyToken());
-  const [spotifyConnecting, setSpotifyConnecting] = useState(false);
-  const spotifyVolumeWarningRef = useRef<string | null>(null);
-  const [masterVolume, setMasterVolume] = useState(() => {
-    if (typeof window === "undefined") return 0.85;
-    const stored = window.localStorage.getItem(`songpix-room-volume:${slug}`);
-    const parsed = stored ? Number(stored) : NaN;
-    return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.85;
-  });
 
   useEffect(() => {
     let mounted = true;
@@ -322,37 +298,6 @@ function RoomPanel() {
   }, [room]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(`songpix-room-volume:${slug}`, String(masterVolume));
-  }, [masterVolume, slug]);
-
-  useEffect(() => {
-    const playingSource = items.find((i) => i.status === "playing")?.source?.toLowerCase();
-    if (playingSource !== "spotify") return;
-
-    const timer = window.setTimeout(() => {
-      setSpotifyPlaybackVolume(masterVolume).then((result) => {
-        if (result === "ok") {
-          spotifyVolumeWarningRef.current = null;
-          setSpotifyConnected(true);
-          return;
-        }
-        if (result === "missing-token") return;
-        setSpotifyConnected(false);
-        if (spotifyVolumeWarningRef.current === result) return;
-        spotifyVolumeWarningRef.current = result;
-        if (result === "no-device") {
-          toast.error("Abra o Spotify e dê play uma vez para criar um dispositivo ativo.");
-        } else {
-          toast.error("Conecte o Spotify novamente para controlar o volume geral.");
-        }
-      });
-    }, 250);
-
-    return () => window.clearTimeout(timer);
-  }, [items, masterVolume]);
-
-  useEffect(() => {
     if (!room || typeof window === "undefined") return;
     if (!window.localStorage.getItem(ROOM_SPOTIFY_TIPS_STORAGE_KEY)) {
       setSpotifyTipsOpen(true);
@@ -364,18 +309,6 @@ function RoomPanel() {
       window.localStorage.setItem(ROOM_SPOTIFY_TIPS_STORAGE_KEY, "1");
     }
     setSpotifyTipsOpen(false);
-  }
-
-  async function connectSpotify() {
-    if (typeof window === "undefined") return;
-
-    setSpotifyConnecting(true);
-    try {
-      await startSpotifyVolumeAuth(window.location.pathname);
-    } catch (error) {
-      setSpotifyConnecting(false);
-      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar a conexão.");
-    }
   }
 
   async function toggleOpen() {
@@ -709,31 +642,6 @@ function RoomPanel() {
               Fila Prioritária
             </h2>
             <div className="flex flex-wrap items-center justify-end gap-3">
-              <div className="flex min-w-[220px] items-center gap-2 border border-border bg-surface/70 px-2.5 py-1.5">
-                <Volume2 className="h-3.5 w-3.5 shrink-0 text-neon" />
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={Math.round(masterVolume * 100)}
-                  onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
-                  className="h-1.5 min-w-0 flex-1 cursor-pointer accent-neon"
-                  aria-label="Volume geral da sala"
-                />
-                <span className="w-9 text-right font-mono text-[10px] font-bold tabular-nums text-neon">
-                  {Math.round(masterVolume * 100)}%
-                </span>
-              </div>
-              {playing?.source?.toLowerCase() === "spotify" && !spotifyConnected && (
-                <button
-                  type="button"
-                  onClick={connectSpotify}
-                  disabled={spotifyConnecting}
-                  className="border border-neon bg-neon px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-neon-foreground hover:opacity-90 disabled:opacity-50"
-                >
-                  {spotifyConnecting ? "Conectando..." : "Conectar Spotify"}
-                </button>
-              )}
               <span className="font-mono text-[10px] text-muted-foreground">
                 {queue.length.toString().padStart(2, "0")} MÚSICAS
               </span>
@@ -825,7 +733,6 @@ function RoomPanel() {
               </div>
               <OwnerPlayer
                 item={playing}
-                volume={masterVolume}
                 onEnded={() => playedAndNext(playing.id)}
                 onProgress={setProgress}
               />
@@ -1383,12 +1290,7 @@ function RoomPanel() {
         </DialogContent>
       </Dialog>
 
-      {overlayOpen && (
-        <OverlayBuilder
-          slug={slug}
-          onClose={() => setOverlayOpen(false)}
-        />
-      )}
+      {overlayOpen && <OverlayBuilder slug={slug} onClose={() => setOverlayOpen(false)} />}
     </div>
   );
 }
@@ -1439,13 +1341,7 @@ const OVERLAY_WIDGETS: OverlayWidget[] = [
   },
 ];
 
-function OverlayBuilder({
-  slug,
-  onClose,
-}: {
-  slug: string;
-  onClose: () => void;
-}) {
+function OverlayBuilder({ slug, onClose }: { slug: string; onClose: () => void }) {
   const sendOverlayAlertTest = useServerFn(triggerOverlayAlertTest);
   useBodyScrollLock();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
