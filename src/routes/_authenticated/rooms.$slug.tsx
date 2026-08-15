@@ -592,31 +592,6 @@ function RoomPanel() {
                 {formatCents(totalCents)}
               </div>
             </div>
-            <div className="w-full min-w-[210px] border border-border bg-surface/60 px-3 py-2">
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <Volume2 className="h-3 w-3 text-neon" />
-                  Volume geral
-                </div>
-                <span className="font-mono text-[10px] font-bold tabular-nums text-neon">
-                  {Math.round(masterVolume * 100)}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(masterVolume * 100)}
-                onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
-                className="h-1.5 w-full cursor-pointer accent-neon"
-                aria-label="Volume geral da sala"
-              />
-              {playing?.source?.toLowerCase() === "spotify" && (
-                <p className="mt-1 font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
-                  Spotify usa o volume do player oficial
-                </p>
-              )}
-            </div>
             <button
               onClick={toggleOpen}
               className={`px-3 py-2 font-display text-[10px] font-bold uppercase tracking-widest ${
@@ -682,14 +657,36 @@ function RoomPanel() {
 
         <section className={`mt-6 space-y-6 ${tab === "queue" ? "" : "hidden"}`}>
           {/* Header da fila — igual ao público */}
-          <div className="flex items-center justify-between border-b border-border pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2">
             <h2 className="font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Fila Prioritária
             </h2>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {queue.length.toString().padStart(2, "0")} MÚSICAS
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className="flex min-w-[220px] items-center gap-2 border border-border bg-surface/70 px-2.5 py-1.5">
+                <Volume2 className="h-3.5 w-3.5 shrink-0 text-neon" />
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(masterVolume * 100)}
+                  onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
+                  className="h-1.5 min-w-0 flex-1 cursor-pointer accent-neon"
+                  aria-label="Volume geral da sala"
+                />
+                <span className="w-9 text-right font-mono text-[10px] font-bold tabular-nums text-neon">
+                  {Math.round(masterVolume * 100)}%
+                </span>
+              </div>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {queue.length.toString().padStart(2, "0")} MÚSICAS
+              </span>
+            </div>
           </div>
+          {playing?.source?.toLowerCase() === "spotify" && (
+            <p className="-mt-4 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+              Spotify usa o volume do player oficial.
+            </p>
+          )}
 
           {/* Now playing */}
           {playing ? (
