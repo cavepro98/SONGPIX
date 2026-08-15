@@ -54,7 +54,7 @@ export function MusicPlayer({ url, source, volume = 1, onEnded, onProgress }: Pr
   if (src === "spotify") {
     const embed = spotifyEmbed(url);
     if (!embed) return <Fallback url={url} />;
-    return <SpotifyPlayer embed={embed} onEnded={onEnded} onProgress={onProgress} />;
+    return <SpotifyPlayer embed={embed} volume={volume} onEnded={onEnded} onProgress={onProgress} />;
   }
 
   if (src === "soundcloud") {
@@ -324,19 +324,34 @@ function SoundCloudPlayer({
 
 function SpotifyPlayer({
   embed,
+  volume,
   onEnded,
   onProgress,
 }: {
   embed: string;
+  volume: number;
   onEnded?: () => void;
   onProgress?: (p: Progress) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const volumeRef = useRef(volume);
+  const controllerRef = useRef<{
+    setVolume?: (volume: number) => void;
+  } | null>(null);
   const endedRef = useRef(onEnded);
+  volumeRef.current = volume;
   endedRef.current = onEnded;
 
   useEffect(() => {
-    let controller: { destroy?: () => void } | null = null;
+    try {
+      controllerRef.current?.setVolume?.(volume);
+    } catch {
+      /* ignore */
+    }
+  }, [volume]);
+
+  useEffect(() => {
+    let controller: { destroy?: () => void; setVolume?: (volume: number) => void } | null = null;
     let cancelled = false;
     let endedFired = false;
     const progressRef = { current: onProgress };
@@ -387,6 +402,7 @@ function SpotifyPlayer({
                 ) => void;
                 destroy?: () => void;
                 play?: () => void;
+                setVolume?: (volume: number) => void;
               }) => void,
             ) => void;
           };
@@ -402,7 +418,9 @@ function SpotifyPlayer({
 
       api.createController(el, { uri, width: "100%", height: 152 }, (c) => {
         controller = c;
+        controllerRef.current = c;
         try {
+          c.setVolume?.(volumeRef.current);
           c.play?.();
         } catch {
           /* ignore */
@@ -431,6 +449,7 @@ function SpotifyPlayer({
       cancelled = true;
       try {
         controller?.destroy?.();
+        controllerRef.current = null;
       } catch {
         /* ignore */
       }

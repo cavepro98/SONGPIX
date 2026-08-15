@@ -682,12 +682,6 @@ function RoomPanel() {
               </span>
             </div>
           </div>
-          {playing?.source?.toLowerCase() === "spotify" && (
-            <p className="-mt-4 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-              Spotify usa o volume do player oficial.
-            </p>
-          )}
-
           {/* Now playing */}
           {playing ? (
             <div
