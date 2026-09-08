@@ -17,6 +17,7 @@ import bgNoise from "@/assets/bg-noise.gif";
 import { useCoverUrl } from "@/lib/use-cover-url";
 import { useAnimatedSwap } from "@/hooks/use-animated-swap";
 import { getPublicRoomMeta } from "@/lib/public-settings.functions";
+import { MAX_PAYMENT_CENTS, MIN_PAYMENT_CENTS } from "@/lib/payment-limits";
 
 export const Route = createFileRoute("/$slug")({
   loader: async ({ params }) => {
@@ -158,13 +159,16 @@ function parseCurrencyCents(value: string) {
 }
 
 const DEFAULT_BOOST_LIMITS: BoostLimits = {
-  minBoostGlobalCents: 100,
-  maxBoostGlobalCents: 1_000_000,
+  minBoostGlobalCents: MIN_PAYMENT_CENTS,
+  maxBoostGlobalCents: MAX_PAYMENT_CENTS,
 };
 
 function normalizeRoomBoostLimits(room: Room | null, limits: BoostLimits) {
   if (!room) return room;
-  const minBoostCents = Math.max(room.min_boost_cents, limits.minBoostGlobalCents);
+  const minBoostCents = Math.min(
+    Math.max(room.min_boost_cents, limits.minBoostGlobalCents),
+    limits.maxBoostGlobalCents,
+  );
   const maxBoostCents = Math.min(
     Math.max(room.max_boost_cents || limits.maxBoostGlobalCents, minBoostCents),
     limits.maxBoostGlobalCents,

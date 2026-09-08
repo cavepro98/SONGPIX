@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { MAX_PAYMENT_CENTS, MIN_PAYMENT_CENTS } from "@/lib/payment-limits";
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase
@@ -36,8 +37,14 @@ export const getBoostPriceLimits = createServerFn({ method: "GET" })
       .eq("id", 1)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    const minBoostGlobalCents = Number(data?.min_boost_global_cents ?? 100);
-    const maxBoostGlobalCents = Number(data?.max_boost_global_cents ?? 1_000_000);
+    const minBoostGlobalCents = Math.min(
+      MAX_PAYMENT_CENTS,
+      Math.max(MIN_PAYMENT_CENTS, Number(data?.min_boost_global_cents ?? MIN_PAYMENT_CENTS)),
+    );
+    const maxBoostGlobalCents = Math.min(
+      MAX_PAYMENT_CENTS,
+      Number(data?.max_boost_global_cents ?? MAX_PAYMENT_CENTS),
+    );
     return {
       minBoostGlobalCents,
       maxBoostGlobalCents: Math.max(minBoostGlobalCents, maxBoostGlobalCents),
@@ -47,8 +54,8 @@ export const getBoostPriceLimits = createServerFn({ method: "GET" })
 const UpdateInput = z.object({
   platform_name: z.string().trim().min(1).max(60),
   commission_rate: z.number().min(0).max(1),
-  min_boost_global_cents: z.number().int().min(50),
-  max_boost_global_cents: z.number().int().min(0),
+  min_boost_global_cents: z.number().int().min(MIN_PAYMENT_CENTS).max(MAX_PAYMENT_CENTS),
+  max_boost_global_cents: z.number().int().min(MIN_PAYMENT_CENTS).max(MAX_PAYMENT_CENTS),
   min_withdrawal_cents: z.number().int().min(100),
   allow_signups: z.boolean(),
   maintenance_mode: z.boolean(),

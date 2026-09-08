@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getBoostPriceLimits } from "@/lib/admin-settings.functions";
 import { getMyEarnings } from "@/lib/withdrawals.functions";
+import { MAX_PAYMENT_CENTS, MIN_PAYMENT_CENTS } from "@/lib/payment-limits";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Meu SongPIX | SongPIX" }] }),
@@ -60,8 +61,8 @@ type Room = {
 
 const DASHBOARD_WELCOME_STORAGE_KEY = "songpix-dashboard-welcome-seen";
 const DEFAULT_BOOST_LIMITS = {
-  minBoostGlobalCents: 100,
-  maxBoostGlobalCents: 1_000_000,
+  minBoostGlobalCents: MIN_PAYMENT_CENTS,
+  maxBoostGlobalCents: MAX_PAYMENT_CENTS,
 };
 const RESERVED_SLUGS = new Set([
   "admin",

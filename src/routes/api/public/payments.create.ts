@@ -5,6 +5,7 @@ import { detectSource, isPlaylistUrl, isTrackUrl, resolveSoundcloudShortUrl } fr
 import { assertPublicAppAvailable } from "@/lib/app-config.server";
 import { publicJsonResponse, publicOptionsResponse } from "@/lib/cors.server";
 import { createPaymentStatusToken, enforceRateLimit } from "@/lib/security.server";
+import { MAX_PAYMENT_CENTS, MIN_PAYMENT_CENTS } from "@/lib/payment-limits";
 
 const METHODS = ["POST"];
 
@@ -27,7 +28,7 @@ const BodySchema = z.object({
   roomSlug: z.string().min(1).max(64),
   payerName: z.string().trim().min(1).max(80),
   payerEmail: z.string().email().max(160).optional(),
-  amountCents: z.number().int().positive().max(1_000_000),
+  amountCents: z.number().int().min(MIN_PAYMENT_CENTS).max(MAX_PAYMENT_CENTS),
   // either an existing queue item to boost, or a new song to enqueue
   existingItemId: z.string().uuid().optional(),
   song: z
@@ -95,8 +96,20 @@ export const Route = createFileRoute("/api/public/payments/create")({
             .select("commission_rate, min_boost_global_cents, max_boost_global_cents")
             .eq("id", 1)
             .maybeSingle();
-          const globalMinCents = Math.max(50, Number(settings?.min_boost_global_cents ?? 100));
-          const globalMaxCents = Number(settings?.max_boost_global_cents ?? 1_000_000);
+          const globalMinCents = Math.min(
+            MAX_PAYMENT_CENTS,
+            Math.max(
+              MIN_PAYMENT_CENTS,
+              Number(settings?.min_boost_global_cents ?? MIN_PAYMENT_CENTS),
+            ),
+          );
+          const globalMaxCents = Math.max(
+            globalMinCents,
+            Math.min(
+              MAX_PAYMENT_CENTS,
+              Number(settings?.max_boost_global_cents ?? MAX_PAYMENT_CENTS),
+            ),
+          );
           const effectiveMinCents = Math.max(Number(room.min_boost_cents ?? 0), globalMinCents);
           const effectiveMaxCents = Math.max(
             effectiveMinCents,

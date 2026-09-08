@@ -1,3 +1,5 @@
+import { MAX_PAYMENT_CENTS, MIN_PAYMENT_CENTS } from "@/lib/payment-limits";
+
 export type PublicAppConfig = {
   allowSignups: boolean;
   maintenanceMode: boolean;
@@ -15,8 +17,14 @@ export async function getPublicAppConfig(): Promise<PublicAppConfig> {
 
   if (error) throw new Error(error.message);
 
-  const minBoostGlobalCents = Number(data?.min_boost_global_cents ?? 100);
-  const maxBoostGlobalCents = Number(data?.max_boost_global_cents ?? 1_000_000);
+  const minBoostGlobalCents = Math.min(
+    MAX_PAYMENT_CENTS,
+    Math.max(MIN_PAYMENT_CENTS, Number(data?.min_boost_global_cents ?? MIN_PAYMENT_CENTS)),
+  );
+  const maxBoostGlobalCents = Math.min(
+    MAX_PAYMENT_CENTS,
+    Number(data?.max_boost_global_cents ?? MAX_PAYMENT_CENTS),
+  );
 
   return {
     allowSignups: !!data?.allow_signups,
