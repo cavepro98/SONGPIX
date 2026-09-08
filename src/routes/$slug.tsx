@@ -121,7 +121,16 @@ function formatCents(c: number) {
 }
 
 function formatInputCents(cents: number) {
-  return (cents / 100).toFixed(2).replace(".", ",");
+  return `R$ ${(cents / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatCurrencyInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 12);
+  if (!digits) return "";
+  return formatInputCents(Number.parseInt(digits, 10));
 }
 
 function formatTime(totalSeconds: number) {
@@ -682,10 +691,11 @@ function ViewerRoom() {
                           </label>
                           <input
                             type="text"
-                            inputMode="decimal"
+                            inputMode="numeric"
                             placeholder={formatInputCents(room.min_boost_cents)}
                             value={requestAmount}
-                            onChange={(e) => setRequestAmount(e.target.value)}
+                            onChange={(e) => setRequestAmount(formatCurrencyInput(e.target.value))}
+                            maxLength={18}
                             className="border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-neon"
                           />
                         </div>
@@ -777,10 +787,11 @@ function ViewerRoom() {
                     {room.require_payment && (
                       <input
                         type="text"
-                        inputMode="decimal"
+                        inputMode="numeric"
                         placeholder={formatInputCents(room.min_boost_cents)}
                         value={requestAmount}
-                        onChange={(e) => setRequestAmount(e.target.value)}
+                        onChange={(e) => setRequestAmount(formatCurrencyInput(e.target.value))}
+                        maxLength={18}
                         aria-label="Valor do apoio"
                         className="border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-neon"
                       />
@@ -1060,18 +1071,15 @@ function ViewerRoom() {
                         </div>
                         {boostOpen === item.id && (
                           <div className="flex flex-wrap items-center gap-2 border-t border-border bg-background px-4 py-3">
-                            <span className="font-mono text-[10px] uppercase text-muted-foreground">
-                              R$
-                            </span>
                             <input
-                              type="number"
-                              step="0.01"
-                              min={room.min_boost_cents / 100}
-                              max={room.max_boost_cents ? room.max_boost_cents / 100 : undefined}
+                              type="text"
+                              inputMode="numeric"
                               value={boostAmount}
-                              onChange={(e) => setBoostAmount(e.target.value)}
-                              placeholder={(room.min_boost_cents / 100).toFixed(2)}
-                              className="w-24 border border-border bg-surface px-2 py-1.5 font-mono text-sm outline-none focus:border-neon"
+                              onChange={(e) => setBoostAmount(formatCurrencyInput(e.target.value))}
+                              placeholder={formatInputCents(room.min_boost_cents)}
+                              maxLength={18}
+                              aria-label="Valor do fura fila"
+                              className="w-32 border border-border bg-surface px-2 py-1.5 font-mono text-sm outline-none focus:border-neon"
                             />
                             <button
                               onClick={() => handleBoost(item.id)}
