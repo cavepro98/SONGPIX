@@ -21,7 +21,6 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as ApiPublicAppConfigRouteImport } from './routes/api/public/app-config'
 import { Route as AuthenticatedRoomsSlugRouteImport } from './routes/_authenticated/rooms.$slug'
 import { Route as ApiPublicWebhooksPushinpayRouteImport } from './routes/api/public/webhooks.pushinpay'
-import { Route as ApiPublicWebhooksMercadopagoRouteImport } from './routes/api/public/webhooks.mercadopago'
 import { Route as ApiPublicRoomsSlugRouteImport } from './routes/api/public/rooms.$slug'
 import { Route as ApiPublicPaymentsCreateRouteImport } from './routes/api/public/payments.create'
 import { Route as ApiPublicAuthSignupRouteImport } from './routes/api/public/auth.signup'
@@ -88,12 +87,6 @@ const ApiPublicWebhooksPushinpayRoute =
     path: '/api/public/webhooks/pushinpay',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicWebhooksMercadopagoRoute =
-  ApiPublicWebhooksMercadopagoRouteImport.update({
-    id: '/api/public/webhooks/mercadopago',
-    path: '/api/public/webhooks/mercadopago',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicRoomsSlugRoute = ApiPublicRoomsSlugRouteImport.update({
   id: '/api/public/rooms/$slug',
   path: '/api/public/rooms/$slug',
@@ -130,7 +123,6 @@ export interface FileRoutesByFullPath {
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
   '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
-  '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
   '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRoute
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
 }
@@ -148,7 +140,6 @@ export interface FileRoutesByTo {
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
   '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
-  '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
   '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRoute
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
 }
@@ -168,7 +159,6 @@ export interface FileRoutesById {
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
   '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
-  '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
   '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRoute
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
 }
@@ -188,7 +178,6 @@ export interface FileRouteTypes {
     | '/api/public/auth/signup'
     | '/api/public/payments/create'
     | '/api/public/rooms/$slug'
-    | '/api/public/webhooks/mercadopago'
     | '/api/public/webhooks/pushinpay'
     | '/api/public/payments/$id/status'
   fileRoutesByTo: FileRoutesByTo
@@ -206,7 +195,6 @@ export interface FileRouteTypes {
     | '/api/public/auth/signup'
     | '/api/public/payments/create'
     | '/api/public/rooms/$slug'
-    | '/api/public/webhooks/mercadopago'
     | '/api/public/webhooks/pushinpay'
     | '/api/public/payments/$id/status'
   id:
@@ -225,7 +213,6 @@ export interface FileRouteTypes {
     | '/api/public/auth/signup'
     | '/api/public/payments/create'
     | '/api/public/rooms/$slug'
-    | '/api/public/webhooks/mercadopago'
     | '/api/public/webhooks/pushinpay'
     | '/api/public/payments/$id/status'
   fileRoutesById: FileRoutesById
@@ -241,7 +228,6 @@ export interface RootRouteChildren {
   ApiPublicAuthSignupRoute: typeof ApiPublicAuthSignupRoute
   ApiPublicPaymentsCreateRoute: typeof ApiPublicPaymentsCreateRoute
   ApiPublicRoomsSlugRoute: typeof ApiPublicRoomsSlugRoute
-  ApiPublicWebhooksMercadopagoRoute: typeof ApiPublicWebhooksMercadopagoRoute
   ApiPublicWebhooksPushinpayRoute: typeof ApiPublicWebhooksPushinpayRoute
   ApiPublicPaymentsIdStatusRoute: typeof ApiPublicPaymentsIdStatusRoute
 }
@@ -332,13 +318,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksPushinpayRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/webhooks/mercadopago': {
-      id: '/api/public/webhooks/mercadopago'
-      path: '/api/public/webhooks/mercadopago'
-      fullPath: '/api/public/webhooks/mercadopago'
-      preLoaderRoute: typeof ApiPublicWebhooksMercadopagoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/rooms/$slug': {
       id: '/api/public/rooms/$slug'
       path: '/api/public/rooms/$slug'
@@ -398,7 +377,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAuthSignupRoute: ApiPublicAuthSignupRoute,
   ApiPublicPaymentsCreateRoute: ApiPublicPaymentsCreateRoute,
   ApiPublicRoomsSlugRoute: ApiPublicRoomsSlugRoute,
-  ApiPublicWebhooksMercadopagoRoute: ApiPublicWebhooksMercadopagoRoute,
   ApiPublicWebhooksPushinpayRoute: ApiPublicWebhooksPushinpayRoute,
   ApiPublicPaymentsIdStatusRoute: ApiPublicPaymentsIdStatusRoute,
 }
