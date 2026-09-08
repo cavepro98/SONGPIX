@@ -47,7 +47,7 @@ export const getBoostPriceLimits = createServerFn({ method: "GET" })
 const UpdateInput = z.object({
   platform_name: z.string().trim().min(1).max(60),
   commission_rate: z.number().min(0).max(1),
-  min_boost_global_cents: z.number().int().min(0),
+  min_boost_global_cents: z.number().int().min(50),
   max_boost_global_cents: z.number().int().min(0),
   min_withdrawal_cents: z.number().int().min(100),
   allow_signups: z.boolean(),

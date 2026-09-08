@@ -8,7 +8,7 @@ type CreateResp = {
   statusToken: string;
   qrCode: string;
   qrCodeBase64: string;
-  expiresAt: string;
+  expiresAt: string | null;
   amountCents: number;
 };
 
@@ -34,13 +34,14 @@ function fmtCents(c: number) {
   return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+const TERMINAL_FAILURE_STATUSES = ["cancelled", "expired", "rejected", "refunded"];
+
 export default function PixCheckoutModal(props: Props) {
   const { open, onClose, roomSlug, amountCents, payerName, existingItemId, song, onApproved } =
     props;
   useBodyScrollLock(open);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<CreateResp | null>(null);
-  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("pending");
   const [copied, setCopied] = useState(false);
@@ -52,7 +53,6 @@ export default function PixCheckoutModal(props: Props) {
       setResp(null);
       setError(null);
       setStatus("pending");
-      setEmail("");
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
     }
@@ -60,6 +60,7 @@ export default function PixCheckoutModal(props: Props) {
 
   useEffect(() => {
     if (!resp) return;
+    if (!resp.expiresAt) return;
     const id = setInterval(() => {
       const left = Math.max(
         0,
@@ -71,7 +72,7 @@ export default function PixCheckoutModal(props: Props) {
   }, [resp]);
 
   useEffect(() => {
-    if (!resp || status === "approved") return;
+    if (!resp || status === "approved" || TERMINAL_FAILURE_STATUSES.includes(status)) return;
     pollRef.current = setInterval(async () => {
       try {
         const r = await fetch(
@@ -80,8 +81,10 @@ export default function PixCheckoutModal(props: Props) {
         if (!r.ok) return;
         const data = await r.json();
         setStatus(data.status);
-        if (data.status === "approved") {
+        if (data.status === "approved" || TERMINAL_FAILURE_STATUSES.includes(data.status)) {
           if (pollRef.current) clearInterval(pollRef.current);
+        }
+        if (data.status === "approved") {
           toast.success("Pagamento confirmado! 🎉");
           onApproved?.();
           setTimeout(() => onClose(), 1500);
@@ -97,10 +100,6 @@ export default function PixCheckoutModal(props: Props) {
 
   async function start() {
     setError(null);
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Informe um e-mail válido");
-      return;
-    }
     setLoading(true);
     try {
       const r = await fetch("/api/public/payments/create", {
@@ -109,7 +108,6 @@ export default function PixCheckoutModal(props: Props) {
         body: JSON.stringify({
           roomSlug,
           payerName,
-          payerEmail: email,
           amountCents,
           existingItemId,
           song,
@@ -142,7 +140,8 @@ export default function PixCheckoutModal(props: Props) {
     .toString()
     .padStart(2, "0");
   const ss = (remaining % 60).toString().padStart(2, "0");
-  const expired = resp && remaining === 0 && status !== "approved";
+  const expired = Boolean(resp?.expiresAt && remaining === 0 && status !== "approved");
+  const paymentFailed = TERMINAL_FAILURE_STATUSES.includes(status);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
@@ -167,18 +166,10 @@ export default function PixCheckoutModal(props: Props) {
               Quanto maior o apoio, mais alta sua música fica na fila. Se quiser tentar o topo,
               escolha um valor acima dos apoios atuais.
             </div>
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Seu e-mail (para o comprovante)
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="voce@email.com"
-                className="mt-1 w-full rounded-md border border-input bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neon"
-              />
-            </label>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              A PushinPay apenas processa o pagamento e não se responsabiliza pela entrega, suporte,
+              conteúdo, qualidade ou demais obrigações do SongPIX.
+            </p>
             {error && <p className="text-xs text-destructive">{error}</p>}
             <button
               onClick={start}
@@ -200,6 +191,13 @@ export default function PixCheckoutModal(props: Props) {
                 <Check className="mx-auto h-8 w-8 text-neon" />
                 <p className="mt-2 font-bold text-neon">Pagamento confirmado!</p>
               </div>
+            ) : paymentFailed ? (
+              <div className="rounded-md bg-destructive/10 p-4 text-center">
+                <p className="font-bold text-destructive">PIX cancelado ou expirado</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Feche esta janela e gere um novo código para tentar novamente.
+                </p>
+              </div>
             ) : (
               <>
                 {resp.qrCodeBase64 && (
@@ -219,7 +217,13 @@ export default function PixCheckoutModal(props: Props) {
                   {copied ? "Copiado!" : "Copiar PIX copia e cola"}
                 </button>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{expired ? "QR expirado" : `Expira em ${mm}:${ss}`}</span>
+                  <span>
+                    {expired
+                      ? "QR expirado"
+                      : resp.expiresAt
+                        ? `Expira em ${mm}:${ss}`
+                        : "PIX disponível para pagamento"}
+                  </span>
                   <span className="flex items-center gap-1">
                     <Loader2 className="h-3 w-3 animate-spin" /> aguardando pagamento…
                   </span>

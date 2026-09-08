@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { mpCreatePixPayment } from "@/lib/mercadopago.server";
+import { pushinPayCreatePix } from "@/lib/pushinpay.server";
 import { detectSource, isPlaylistUrl, isTrackUrl, resolveSoundcloudShortUrl } from "@/lib/oembed";
 import { assertPublicAppAvailable } from "@/lib/app-config.server";
 import { publicJsonResponse, publicOptionsResponse } from "@/lib/cors.server";
@@ -15,7 +15,7 @@ function json(request: Request, data: unknown, status: number) {
 const BodySchema = z.object({
   roomSlug: z.string().min(1).max(64),
   payerName: z.string().trim().min(1).max(80),
-  payerEmail: z.string().email().max(160),
+  payerEmail: z.string().email().max(160).optional(),
   amountCents: z.number().int().positive().max(1_000_000),
   // either an existing queue item to boost, or a new song to enqueue
   existingItemId: z.string().uuid().optional(),
@@ -84,7 +84,7 @@ export const Route = createFileRoute("/api/public/payments/create")({
             .select("commission_rate, min_boost_global_cents, max_boost_global_cents")
             .eq("id", 1)
             .maybeSingle();
-          const globalMinCents = Number(settings?.min_boost_global_cents ?? 100);
+          const globalMinCents = Math.max(50, Number(settings?.min_boost_global_cents ?? 100));
           const globalMaxCents = Number(settings?.max_boost_global_cents ?? 1_000_000);
           const effectiveMinCents = Math.max(Number(room.min_boost_cents ?? 0), globalMinCents);
           const effectiveMaxCents = Math.max(
@@ -220,67 +220,65 @@ export const Route = createFileRoute("/api/public/payments/create")({
               room_id: room.id,
               owner_id: room.owner_id,
               payer_name: body.payerName,
-              payer_email: body.payerEmail,
+              payer_email: body.payerEmail ?? null,
               song_payload: songPayload as never,
               amount_cents: body.amountCents,
               commission_cents: commission,
               net_cents: net,
               status: "pending",
-              provider: "mercadopago",
+              provider: "pushinpay",
             })
             .select("id")
             .single();
           if (insErr) throw new Error(insErr.message);
 
-          // 2) Build absolute URLs for MP.
+          // 2) Build an absolute webhook URL.
           // Prefer an explicit public app URL so webhooks always target
           // the real deployed app instead of a temporary preview host.
           const reqOrigin = new URL(request.url).origin;
           const stableOrigin = (process.env.PUBLIC_SITE_URL || "").replace(/\/$/, "") || reqOrigin;
-          const notificationUrl = `${stableOrigin}/api/public/webhooks/mercadopago`;
+          const notificationUrl = `${stableOrigin}/api/public/webhooks/pushinpay`;
 
-          // 3) Call MP
+          // 3) Create the PIX with PushinPay.
           try {
-            const mp = await mpCreatePixPayment({
-              amountReais: body.amountCents / 100,
-              description: `SongPIX fura fila - ${room.name}`.slice(0, 256),
-              externalReference: created.id,
-              notificationUrl,
-              expirationMinutes: 15,
-              payer: { email: body.payerEmail, first_name: body.payerName },
+            const pushinPay = await pushinPayCreatePix({
+              valueCents: body.amountCents,
+              webhookUrl: notificationUrl,
               idempotencyKey: created.id,
             });
 
-            await supabaseAdmin
+            const { error: updateError } = await supabaseAdmin
               .from("payments")
               .update({
-                provider_payment_id: mp.id,
-                pix_qr_code: mp.qr_code,
-                pix_qr_code_base64: mp.qr_code_base64,
-                pix_copy_paste: mp.qr_code,
-                expires_at: mp.date_of_expiration,
+                provider_payment_id: pushinPay.id,
+                pix_qr_code: pushinPay.qrCode,
+                pix_qr_code_base64: pushinPay.qrCodeBase64,
+                pix_copy_paste: pushinPay.qrCode,
+                expires_at: pushinPay.expiresAt,
               })
               .eq("id", created.id);
+            if (updateError) throw new Error(updateError.message);
 
             return json(
               request,
               {
                 paymentId: created.id,
                 statusToken: createPaymentStatusToken(created.id),
-                qrCode: mp.qr_code,
-                qrCodeBase64: mp.qr_code_base64,
-                expiresAt: mp.date_of_expiration,
+                qrCode: pushinPay.qrCode,
+                qrCodeBase64: pushinPay.qrCodeBase64,
+                expiresAt: pushinPay.expiresAt,
                 amountCents: body.amountCents,
               },
               200,
             );
-          } catch (mpErr) {
+          } catch (providerError) {
             await removePaidUploadIfNeeded(supabaseAdmin, songPayload);
             await supabaseAdmin
               .from("payments")
               .update({ status: "rejected" })
               .eq("id", created.id);
-            const msg = mpErr instanceof Error ? mpErr.message : "Falha no provedor";
+            const msg =
+              providerError instanceof Error ? providerError.message : "Falha no provedor";
             return json(request, { error: msg }, 502);
           }
         } catch (e) {
