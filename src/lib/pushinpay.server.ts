@@ -109,7 +109,7 @@ export async function pushinPayCreatePix(
 }
 
 export async function pushinPayGetTransaction(id: string): Promise<PushinPayTransaction> {
-  const response = await fetch(`${PUSHINPAY_BASE}/transaction/${encodeURIComponent(id)}`, {
+  const response = await fetch(`${PUSHINPAY_BASE}/transactions/${encodeURIComponent(id)}`, {
     headers: {
       Authorization: `Bearer ${getToken()}`,
       Accept: "application/json",
