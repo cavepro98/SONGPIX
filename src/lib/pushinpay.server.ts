@@ -101,6 +101,7 @@ export async function pushinPayGetTransaction(id: string): Promise<PushinPayTran
     headers: {
       Authorization: `Bearer ${getToken()}`,
       Accept: "application/json",
+      "Content-Type": "application/json",
     },
   });
   const data = await response.json().catch(() => null);

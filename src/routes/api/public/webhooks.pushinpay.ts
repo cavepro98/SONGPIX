@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { pushinPayGetTransaction } from "@/lib/pushinpay.server";
+import { syncPushinPayPayment, type PushinPayPaymentRow } from "@/lib/pushinpay-payment.server";
 import { enforceRateLimit } from "@/lib/security.server";
 
 const WebhookSchema = z
@@ -10,14 +10,6 @@ const WebhookSchema = z
     status: z.enum(["created", "paid", "canceled", "expired"]),
   })
   .passthrough();
-
-async function removePaidUploadIfNeeded(
-  supabaseAdmin: any,
-  songPayload: Record<string, unknown> | null,
-) {
-  if (songPayload?.source !== "upload" || typeof songPayload.url !== "string") return;
-  await supabaseAdmin.storage.from("song-uploads").remove([songPayload.url]);
-}
 
 // PushinPay has no signed webhook payload. Before changing financial state,
 // fetch the transaction with our private token and verify its value and status.
@@ -35,7 +27,7 @@ export const Route = createFileRoute("/api/public/webhooks/pushinpay")({
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: row, error: selectError } = await supabaseAdmin
             .from("payments")
-            .select("id, status, amount_cents, song_payload")
+            .select("id, status, amount_cents, provider_payment_id, song_payload")
             .eq("provider", "pushinpay")
             .eq("provider_payment_id", parsed.data.id)
             .maybeSingle();
@@ -50,36 +42,9 @@ export const Route = createFileRoute("/api/public/webhooks/pushinpay")({
           }
           if (row.status === "approved") return new Response("ok", { status: 200 });
 
-          const transaction = await pushinPayGetTransaction(parsed.data.id);
-          if (transaction.id !== parsed.data.id || transaction.value !== Number(row.amount_cents)) {
-            console.error("[pushinpay-webhook] transaction mismatch", parsed.data.id);
-            return new Response("transaction mismatch", { status: 200 });
-          }
-
-          if (transaction.status === "paid") {
-            const { error: rpcError } = await supabaseAdmin.rpc("confirm_payment", {
-              _payment_id: row.id,
-            });
-            if (rpcError) {
-              console.error("[pushinpay-webhook] confirm_payment failed", rpcError.message);
-              return new Response("rpc error", { status: 500 });
-            }
+          await syncPushinPayPayment(supabaseAdmin, row as PushinPayPaymentRow);
+          if (parsed.data.status === "paid") {
             console.log("[pushinpay-webhook] confirmed", row.id);
-          } else if (["canceled", "expired"].includes(transaction.status)) {
-            const localStatus = transaction.status === "canceled" ? "cancelled" : "expired";
-            const { error: updateError } = await supabaseAdmin
-              .from("payments")
-              .update({ status: localStatus })
-              .eq("id", row.id)
-              .eq("status", "pending");
-            if (updateError) {
-              console.error("[pushinpay-webhook] status update failed", updateError.message);
-              return new Response("db error", { status: 500 });
-            }
-            await removePaidUploadIfNeeded(
-              supabaseAdmin,
-              row.song_payload as Record<string, unknown> | null,
-            );
           }
 
           return new Response("ok", { status: 200 });

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { publicJsonResponse, publicOptionsResponse } from "@/lib/cors.server";
+import { syncPushinPayPayment, type PushinPayPaymentRow } from "@/lib/pushinpay-payment.server";
 import { enforceRateLimit, verifyPaymentStatusToken } from "@/lib/security.server";
 
 const METHODS = ["GET"];
@@ -30,9 +31,11 @@ export const Route = createFileRoute("/api/public/payments/$id/status")({
           );
         }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data } = await supabaseAdmin
+        let { data } = await supabaseAdmin
           .from("payments")
-          .select("id, status, expires_at")
+          .select(
+            "id, status, expires_at, provider, provider_payment_id, amount_cents, song_payload, updated_at",
+          )
           .eq("id", id)
           .maybeSingle();
         if (!data) {
@@ -42,7 +45,48 @@ export const Route = createFileRoute("/api/public/payments/$id/status")({
             { status: 404, methods: METHODS },
           );
         }
-        return publicJsonResponse(request, data, { status: 200, methods: METHODS });
+
+        if (
+          data.status === "pending" &&
+          data.provider === "pushinpay" &&
+          data.provider_payment_id
+        ) {
+          const now = new Date();
+          const refreshBefore = new Date(now.getTime() - 65_000).toISOString();
+          const { data: claimed } = await supabaseAdmin
+            .from("payments")
+            .update({ updated_at: now.toISOString() })
+            .eq("id", id)
+            .eq("status", "pending")
+            .lt("updated_at", refreshBefore)
+            .select("id")
+            .maybeSingle();
+
+          if (claimed) {
+            try {
+              await syncPushinPayPayment(supabaseAdmin, data as PushinPayPaymentRow);
+              const refreshed = await supabaseAdmin
+                .from("payments")
+                .select(
+                  "id, status, expires_at, provider, provider_payment_id, amount_cents, song_payload, updated_at",
+                )
+                .eq("id", id)
+                .maybeSingle();
+              if (refreshed.data) data = refreshed.data;
+            } catch (error) {
+              console.error(
+                "[payments-status] PushinPay sync failed",
+                error instanceof Error ? error.message : error,
+              );
+            }
+          }
+        }
+
+        return publicJsonResponse(
+          request,
+          { id: data.id, status: data.status, expires_at: data.expires_at },
+          { status: 200, methods: METHODS },
+        );
       },
     },
   },
