@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { syncPushinPayPayment, type PushinPayPaymentRow } from "@/lib/pushinpay-payment.server";
+import { PushinPayApiError } from "@/lib/pushinpay.server";
 import { enforceRateLimit } from "@/lib/security.server";
 
 const WebhookSchema = z
@@ -12,6 +13,7 @@ const WebhookSchema = z
   .passthrough();
 
 function getSafeErrorCode(error: unknown): string {
+  if (error instanceof PushinPayApiError) return `pushinpay-http-${error.status}`;
   const message = error instanceof Error ? error.message : "";
   const httpStatus = message.match(/PushinPay: HTTP (\d{3})/)?.[1];
   if (httpStatus) return `pushinpay-http-${httpStatus}`;

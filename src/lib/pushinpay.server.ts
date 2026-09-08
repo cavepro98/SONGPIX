@@ -4,6 +4,16 @@ const PUSHINPAY_BASE = "https://api.pushinpay.com.br/api";
 
 type PushinPayStatus = "created" | "paid" | "canceled" | "expired";
 
+export class PushinPayApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "PushinPayApiError";
+    this.status = status;
+  }
+}
+
 export type CreatePushinPayPixInput = {
   valueCents: number;
   webhookUrl: string;
@@ -89,7 +99,9 @@ export async function pushinPayCreatePix(
     }),
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(getErrorMessage(data, response.status));
+  if (!response.ok) {
+    throw new PushinPayApiError(response.status, getErrorMessage(data, response.status));
+  }
 
   const transaction = parseTransaction(data);
   if (!transaction.qrCode) throw new Error("PushinPay não retornou o código PIX");
@@ -105,6 +117,8 @@ export async function pushinPayGetTransaction(id: string): Promise<PushinPayTran
     },
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(getErrorMessage(data, response.status));
+  if (!response.ok) {
+    throw new PushinPayApiError(response.status, getErrorMessage(data, response.status));
+  }
   return parseTransaction(data);
 }
