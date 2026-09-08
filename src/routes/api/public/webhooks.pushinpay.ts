@@ -11,6 +11,18 @@ const WebhookSchema = z
   })
   .passthrough();
 
+function getSafeErrorCode(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  const httpStatus = message.match(/PushinPay: HTTP (\d{3})/)?.[1];
+  if (httpStatus) return `pushinpay-http-${httpStatus}`;
+  if (message.includes("status inválido")) return "pushinpay-invalid-status";
+  if (message.includes("Resposta inválida")) return "pushinpay-invalid-response";
+  if (message.includes("transaction mismatch")) return "pushinpay-transaction-mismatch";
+  if (message.startsWith("confirm_payment:")) return "confirmation-failed";
+  if (message.startsWith("payment status update:")) return "status-update-failed";
+  return "internal-error";
+}
+
 // PushinPay has no signed webhook payload. Before changing financial state,
 // fetch the transaction with our private token and verify its value and status.
 export const Route = createFileRoute("/api/public/webhooks/pushinpay")({
@@ -49,11 +61,15 @@ export const Route = createFileRoute("/api/public/webhooks/pushinpay")({
 
           return new Response("ok", { status: 200 });
         } catch (error) {
+          const errorCode = getSafeErrorCode(error);
           console.error(
             "[pushinpay-webhook] error",
             error instanceof Error ? error.message : error,
           );
-          return new Response("error", { status: 500 });
+          return new Response(errorCode, {
+            status: 500,
+            headers: { "X-SongPIX-Error": errorCode },
+          });
         }
       },
       GET: async () => new Response("ok", { status: 200 }),
