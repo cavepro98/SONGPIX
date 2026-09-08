@@ -12,6 +12,17 @@ function json(request: Request, data: unknown, status: number) {
   return publicJsonResponse(request, data, { status, methods: METHODS });
 }
 
+function getPushinPayWebhookUrl(request: Request): string {
+  const requestOrigin = new URL(request.url).origin;
+  const configuredOrigin = (process.env.PUBLIC_SITE_URL || "").replace(/\/$/, "") || requestOrigin;
+  const webhookUrl = new URL("/api/public/webhooks/pushinpay", configuredOrigin);
+
+  // Vercel currently redirects the apex domain to www. Payment providers need
+  // the webhook to answer directly instead of returning a 308 redirect.
+  if (webhookUrl.hostname === "songpix.app") webhookUrl.hostname = "www.songpix.app";
+  return webhookUrl.toString();
+}
+
 const BodySchema = z.object({
   roomSlug: z.string().min(1).max(64),
   payerName: z.string().trim().min(1).max(80),
@@ -235,9 +246,7 @@ export const Route = createFileRoute("/api/public/payments/create")({
           // 2) Build an absolute webhook URL.
           // Prefer an explicit public app URL so webhooks always target
           // the real deployed app instead of a temporary preview host.
-          const reqOrigin = new URL(request.url).origin;
-          const stableOrigin = (process.env.PUBLIC_SITE_URL || "").replace(/\/$/, "") || reqOrigin;
-          const notificationUrl = `${stableOrigin}/api/public/webhooks/pushinpay`;
+          const notificationUrl = getPushinPayWebhookUrl(request);
 
           // 3) Create the PIX with PushinPay.
           try {
