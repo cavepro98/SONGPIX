@@ -21,6 +21,7 @@ function getPushinPayWebhookUrl(request: Request): string {
   // Vercel currently redirects the apex domain to www. Payment providers need
   // the webhook to answer directly instead of returning a 308 redirect.
   if (webhookUrl.hostname === "songpix.app") webhookUrl.hostname = "www.songpix.app";
+  webhookUrl.searchParams.set("token", createPaymentStatusToken("pushinpay-webhook"));
   return webhookUrl.toString();
 }
 

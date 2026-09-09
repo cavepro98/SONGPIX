@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { enforceRateLimit } from "@/lib/security.server";
+import { enforceRateLimit, verifyPaymentStatusToken } from "@/lib/security.server";
 
 const WebhookSchema = z
   .object({
@@ -30,6 +30,10 @@ export const Route = createFileRoute("/api/public/webhooks/pushinpay")({
     handlers: {
       POST: async ({ request }) => {
         enforceRateLimit({ bucket: "pushinpay-webhook", limit: 60, windowMs: 60_000 });
+        const token = new URL(request.url).searchParams.get("token");
+        if (!verifyPaymentStatusToken("pushinpay-webhook", token)) {
+          return new Response("unauthorized", { status: 401 });
+        }
 
         const parsed = WebhookSchema.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return new Response("invalid payload", { status: 400 });
