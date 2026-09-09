@@ -107,18 +107,3 @@ export async function pushinPayCreatePix(
   if (!transaction.qrCode) throw new Error("PushinPay não retornou o código PIX");
   return transaction;
 }
-
-export async function pushinPayGetTransaction(id: string): Promise<PushinPayTransaction> {
-  const response = await fetch(`${PUSHINPAY_BASE}/transactions/${encodeURIComponent(id)}`, {
-    headers: {
-      Authorization: `Bearer ${getToken()}`,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new PushinPayApiError(response.status, getErrorMessage(data, response.status));
-  }
-  return parseTransaction(data);
-}

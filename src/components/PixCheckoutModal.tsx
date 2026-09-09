@@ -92,7 +92,7 @@ export default function PixCheckoutModal(props: Props) {
       } catch {
         /* keep polling */
       }
-    }, 3000);
+    }, 1500);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
