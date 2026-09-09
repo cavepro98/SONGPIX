@@ -50,8 +50,11 @@ function normalizeBase64(value: unknown): string {
 }
 
 function parseStatus(value: unknown): PushinPayStatus {
-  if (["created", "paid", "canceled", "expired"].includes(String(value))) {
-    return String(value) as PushinPayStatus;
+  const status = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (["created", "paid", "canceled", "expired"].includes(status)) {
+    return status as PushinPayStatus;
   }
   throw new Error("PushinPay retornou um status inválido");
 }
@@ -106,4 +109,21 @@ export async function pushinPayCreatePix(
   const transaction = parseTransaction(data);
   if (!transaction.qrCode) throw new Error("PushinPay não retornou o código PIX");
   return transaction;
+}
+
+export async function pushinPayGetTransaction(id: string): Promise<PushinPayTransaction> {
+  const response = await fetch(`${PUSHINPAY_BASE}/transactions/${encodeURIComponent(id)}`, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new PushinPayApiError(response.status, getErrorMessage(data, response.status));
+  }
+
+  return parseTransaction(data);
 }
