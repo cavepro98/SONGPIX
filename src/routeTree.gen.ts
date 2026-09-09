@@ -25,6 +25,7 @@ import { Route as ApiPublicRoomsSlugRouteImport } from './routes/api/public/room
 import { Route as ApiPublicPaymentsCreateRouteImport } from './routes/api/public/payments.create'
 import { Route as ApiPublicAuthSignupRouteImport } from './routes/api/public/auth.signup'
 import { Route as ApiPublicPaymentsIdStatusRouteImport } from './routes/api/public/payments.$id.status'
+import { Route as ApiPublicWebhooksPushinpayPaymentIdTokenRouteImport } from './routes/api/public/webhooks.pushinpay.$paymentId.$token'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -108,6 +109,12 @@ const ApiPublicPaymentsIdStatusRoute =
     path: '/api/public/payments/$id/status',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksPushinpayPaymentIdTokenRoute =
+  ApiPublicWebhooksPushinpayPaymentIdTokenRouteImport.update({
+    id: '/$paymentId/$token',
+    path: '/$paymentId/$token',
+    getParentRoute: () => ApiPublicWebhooksPushinpayRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -123,8 +130,9 @@ export interface FileRoutesByFullPath {
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
   '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
-  '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRoute
+  '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRouteWithChildren
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
+  '/api/public/webhooks/pushinpay/$paymentId/$token': typeof ApiPublicWebhooksPushinpayPaymentIdTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -140,8 +148,9 @@ export interface FileRoutesByTo {
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
   '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
-  '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRoute
+  '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRouteWithChildren
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
+  '/api/public/webhooks/pushinpay/$paymentId/$token': typeof ApiPublicWebhooksPushinpayPaymentIdTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -159,8 +168,9 @@ export interface FileRoutesById {
   '/api/public/auth/signup': typeof ApiPublicAuthSignupRoute
   '/api/public/payments/create': typeof ApiPublicPaymentsCreateRoute
   '/api/public/rooms/$slug': typeof ApiPublicRoomsSlugRoute
-  '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRoute
+  '/api/public/webhooks/pushinpay': typeof ApiPublicWebhooksPushinpayRouteWithChildren
   '/api/public/payments/$id/status': typeof ApiPublicPaymentsIdStatusRoute
+  '/api/public/webhooks/pushinpay/$paymentId/$token': typeof ApiPublicWebhooksPushinpayPaymentIdTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/public/rooms/$slug'
     | '/api/public/webhooks/pushinpay'
     | '/api/public/payments/$id/status'
+    | '/api/public/webhooks/pushinpay/$paymentId/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/api/public/rooms/$slug'
     | '/api/public/webhooks/pushinpay'
     | '/api/public/payments/$id/status'
+    | '/api/public/webhooks/pushinpay/$paymentId/$token'
   id:
     | '__root__'
     | '/'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/api/public/rooms/$slug'
     | '/api/public/webhooks/pushinpay'
     | '/api/public/payments/$id/status'
+    | '/api/public/webhooks/pushinpay/$paymentId/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -228,7 +241,7 @@ export interface RootRouteChildren {
   ApiPublicAuthSignupRoute: typeof ApiPublicAuthSignupRoute
   ApiPublicPaymentsCreateRoute: typeof ApiPublicPaymentsCreateRoute
   ApiPublicRoomsSlugRoute: typeof ApiPublicRoomsSlugRoute
-  ApiPublicWebhooksPushinpayRoute: typeof ApiPublicWebhooksPushinpayRoute
+  ApiPublicWebhooksPushinpayRoute: typeof ApiPublicWebhooksPushinpayRouteWithChildren
   ApiPublicPaymentsIdStatusRoute: typeof ApiPublicPaymentsIdStatusRoute
 }
 
@@ -346,6 +359,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsIdStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/pushinpay/$paymentId/$token': {
+      id: '/api/public/webhooks/pushinpay/$paymentId/$token'
+      path: '/$paymentId/$token'
+      fullPath: '/api/public/webhooks/pushinpay/$paymentId/$token'
+      preLoaderRoute: typeof ApiPublicWebhooksPushinpayPaymentIdTokenRouteImport
+      parentRoute: typeof ApiPublicWebhooksPushinpayRoute
+    }
   }
 }
 
@@ -366,6 +386,21 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiPublicWebhooksPushinpayRouteChildren {
+  ApiPublicWebhooksPushinpayPaymentIdTokenRoute: typeof ApiPublicWebhooksPushinpayPaymentIdTokenRoute
+}
+
+const ApiPublicWebhooksPushinpayRouteChildren: ApiPublicWebhooksPushinpayRouteChildren =
+  {
+    ApiPublicWebhooksPushinpayPaymentIdTokenRoute:
+      ApiPublicWebhooksPushinpayPaymentIdTokenRoute,
+  }
+
+const ApiPublicWebhooksPushinpayRouteWithChildren =
+  ApiPublicWebhooksPushinpayRoute._addFileChildren(
+    ApiPublicWebhooksPushinpayRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -377,7 +412,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAuthSignupRoute: ApiPublicAuthSignupRoute,
   ApiPublicPaymentsCreateRoute: ApiPublicPaymentsCreateRoute,
   ApiPublicRoomsSlugRoute: ApiPublicRoomsSlugRoute,
-  ApiPublicWebhooksPushinpayRoute: ApiPublicWebhooksPushinpayRoute,
+  ApiPublicWebhooksPushinpayRoute: ApiPublicWebhooksPushinpayRouteWithChildren,
   ApiPublicPaymentsIdStatusRoute: ApiPublicPaymentsIdStatusRoute,
 }
 export const routeTree = rootRouteImport

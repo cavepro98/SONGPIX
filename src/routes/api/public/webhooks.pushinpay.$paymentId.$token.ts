@@ -2,18 +2,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { processPushinPayWebhook } from "@/lib/pushinpay-webhook.server";
 import { enforceRateLimit, verifyPaymentStatusToken } from "@/lib/security.server";
 
-export const Route = createFileRoute("/api/public/webhooks/pushinpay")({
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const Route = createFileRoute("/api/public/webhooks/pushinpay/$paymentId/$token")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: async ({ params, request }) => {
         enforceRateLimit({ bucket: "pushinpay-webhook", limit: 60, windowMs: 60_000 });
-        const token = new URL(request.url).searchParams.get("token");
-        if (!verifyPaymentStatusToken("pushinpay-webhook", token)) {
+        if (
+          !UUID_RE.test(params.paymentId) ||
+          !verifyPaymentStatusToken(params.paymentId, params.token)
+        ) {
           return new Response("unauthorized", { status: 401 });
         }
-        return processPushinPayWebhook(request);
+        return processPushinPayWebhook(request, params.paymentId);
       },
-      GET: async () => new Response("ok", { status: 200 }),
     },
   },
 });
